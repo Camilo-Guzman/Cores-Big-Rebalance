@@ -185,12 +185,24 @@ local INVALID_DAMAGE_TO_OVERHEAT_DAMAGE_SOURCES = {
 	life_tap = true,
 	ground_impact = true,
 	life_drain = true,
-    warpfire_face = true,
+}
+local INVALID_DAMAGE_TO_OVERHEAT_DAMAGE_TYPES = {
+	warpfire_face = true,
 	vomit_face = true,
 	vomit_ground = true,
 	poison = true,
 	warpfire_ground = true,
 	plague_face = true,
+}
+local POISON_DAMAGE_TYPES = {
+	aoe_poison_dot = true,
+	poison = true,
+	arrow_poison = true,
+	arrow_poison_dot = true
+}
+local POISON_DAMAGE_SOURCES = {
+	skaven_poison_wind_globadier = true,
+	poison_dot = true
 }
 local INVALID_GROMRIL_DAMAGE_SOURCE = {
 	temporary_health_degen = true,
@@ -272,7 +284,7 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, a
 			local is_disabled = status_extension:is_disabled()
 
 			if not is_disabled then
-				local valid_damage_to_overheat = not INVALID_DAMAGE_TO_OVERHEAT_DAMAGE_SOURCES[damage_source]
+				local valid_damage_to_overheat = not INVALID_DAMAGE_TO_OVERHEAT_DAMAGE_SOURCES[damage_source] and not INVALID_DAMAGE_TO_OVERHEAT_DAMAGE_TYPES[damage_type]
 				local unit_side = Managers.state.side.side_by_unit[attacked_unit]
 				local player_and_bot_units = unit_side.PLAYER_AND_BOT_UNITS
 				local shot_by_friendly = false
@@ -285,7 +297,10 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, a
 					end
 				end
 
-				if valid_damage_to_overheat and damage > 0 and not shot_by_friendly and not  is_knocked_down then
+                local is_poison_damage = POISON_DAMAGE_TYPES[damage_type] or POISON_DAMAGE_SOURCES[damage_source]
+                local is_ranged_attack = RangedAttackTypes[buff_attack_type]
+
+				if valid_damage_to_overheat and damage > 0 and not shot_by_friendly and not is_knocked_down and not is_poison_damage and not is_ranged_attack then
 					local original_damage = damage
 					local new_damage = buff_extension:apply_buffs_to_value(damage, "damage_taken_to_overcharge")
 

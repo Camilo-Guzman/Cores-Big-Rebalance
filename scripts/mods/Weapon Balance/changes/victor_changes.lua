@@ -276,28 +276,26 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_health_increase_b
     multiplier = 0.5
 })
 
-local function is_server()
-	return Managers.state.network.is_server
-end
-
 mod:add_proc_function("gs_zealot_damage", function(player, buff, params, world)
-    if is_server() then
-        local player_unit = player.player_unit
-        local target_num = params[4]
-        local attack_type = params[2] == "light_attack" or params[2] == "heavy_attack"
-        local template = buff.template
-        local damage_to_deal = template.damage_to_deal
-        local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
+    if not Managers.state.network.is_server then
+        return
+    end
 
-        if talent_extension:has_talent("victor_zealot_passive_damage_taken", "witch_hunter", true) then
-			damage_to_deal = 0.75
-        elseif talent_extension:has_talent("victor_zealot_passive_healing_received", "witch_hunter", true) then
-			damage_to_deal = 0.1
-		end
+    local player_unit = player.player_unit
+    local target_num = params[4]
+    local attack_type = params[2] == "light_attack" or params[2] == "heavy_attack"
+    local template = buff.template
+    local damage_to_deal = template.damage_to_deal
+    local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
 
-        if target_num <= 5 and attack_type then
-            DamageUtils.add_damage_network(player_unit, player_unit, damage_to_deal, "torso", "life_drain", nil, Vector3(0, 0, 0), "life_drain", nil, player_unit)
-        end
+    if talent_extension:has_talent("victor_zealot_passive_damage_taken", "witch_hunter", true) then
+        damage_to_deal = 0.75
+    elseif talent_extension:has_talent("victor_zealot_passive_healing_received", "witch_hunter", true) then
+        damage_to_deal = 0.1
+    end
+
+    if target_num <= 5 and attack_type then
+        DamageUtils.add_damage_network(player_unit, player_unit, damage_to_deal, "torso", "life_drain", nil, Vector3(0, 0, 0), "life_drain", nil, player_unit)
     end
 end)
 
@@ -593,6 +591,148 @@ mod:modify_talent_buff_template("witch_hunter", "victor_zealot_activated_ability
     stat_buff = "power_level_melee"
 })
 mod:add_text("victor_zealot_activated_ability_power_on_hit_desc", "Attacks during Holy Fervour increase melee power by 3%% for 5 seconds. Stacks up to 10 times.")
+
+mod:add_talent_buff_template("witch_hunter", "zealot_got_your_back_check", {
+    buff_to_add = "zealot_got_your_back",
+    name = "zealot_got_your_back_check",
+    authority = "server",
+    update_func = "update_server_buff_on_health_percent",
+    update_frequency = 0.5,
+    health_threshold = 0.25,
+    duration = 10
+})
+
+mod:add_talent_buff_template("witch_hunter", "zealot_got_your_back", {
+    buff_to_add = "zealot_got_your_back_buff",
+    name = "zealot_got_your_back",
+    disregard_self = true,
+    remove_buff_func = "remove_aura_buff",
+    range = 10,
+    update_func = "activate_buff_on_distance",
+    authority = "server",
+    update_frequency = 0.5
+})
+
+mod:add_talent_buff_template("witch_hunter", "zealot_got_your_back_buff", {
+    name = "zealot_got_your_back_buff",
+    stat_buff = "damage_taken",
+    buff_func = "deus_guard_buff_on_damage",
+    max_stacks = 1,
+    icon = "deus_icon_guard_aura_check",
+    event = "on_damage_taken",
+    multiplier = -0.5
+})
+
+mod:add_text("victor_zealot_activated_ability_ignore_death_desc", "When above 25%% Health you take half of the damage inflicted on nearby allies instead of them.")
+
+mod:hook_origin(CareerAbilityWHZealot , "_run_ability", function (self)
+	self:_stop_priming()
+
+	local owner_unit = self._owner_unit
+	local is_server = self._is_server
+	local local_player = self._local_player
+	local network_manager = self._network_manager
+	local network_transmit = network_manager.network_transmit
+	local status_extension = self._status_extension
+	local career_extension = self._career_extension
+	local buff_extension = self._buff_extension
+	local buff_names = {
+		"victor_zealot_activated_ability"
+	}
+	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+
+	if talent_extension:has_talent("victor_zealot_activated_ability_power_on_hit", "witch_hunter", true) then
+		buff_names[#buff_names + 1] = "victor_zealot_activated_ability_power_on_hit"
+	end
+
+	if talent_extension:has_talent("victor_zealot_activated_ability_ignore_death", "witch_hunter", true) then
+		buff_names[#buff_names + 1] = "zealot_got_your_back_check"
+	end
+
+	if talent_extension:has_talent("victor_zealot_activated_ability_cooldown_stack_on_hit", "witch_hunter", true) then
+		buff_extension:add_buff("victor_zealot_activated_ability_cooldown_stack_on_hit", {
+			attacker_unit = owner_unit
+		})
+	end
+
+	for i = 1, #buff_names, 1 do
+		local buff_name = buff_names[i]
+		local unit_object_id = network_manager:unit_game_object_id(owner_unit)
+		local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
+
+		if is_server then
+			buff_extension:add_buff(buff_name, {
+				attacker_unit = owner_unit
+			})
+			network_transmit:send_rpc_clients("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, false)
+		else
+			network_transmit:send_rpc_server("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, true)
+		end
+	end
+
+	if local_player or (is_server and self._bot_player) then
+		local first_person_extension = self._first_person_extension
+
+		first_person_extension:play_hud_sound_event("Play_career_ability_victor_zealot_enter")
+		first_person_extension:play_remote_unit_sound_event("Play_career_ability_victor_zealot_enter", owner_unit, 0)
+		first_person_extension:play_hud_sound_event("Play_career_ability_victor_zealot_loop")
+
+		if local_player then
+			first_person_extension:animation_event("shade_stealth_ability")
+			first_person_extension:play_hud_sound_event("Play_career_ability_zealot_charge")
+			first_person_extension:play_remote_unit_sound_event("Play_career_ability_zealot_charge", owner_unit, 0)
+			career_extension:set_state("victor_activate_zealot")
+
+			MOOD_BLACKBOARD.skill_zealot = true
+		end
+	end
+
+	status_extension:add_noclip_stacking()
+
+	status_extension.do_lunge = {
+		animation_end_event = "zealot_active_ability_charge_hit",
+		allow_rotation = false,
+		first_person_animation_end_event = "dodge_bwd",
+		first_person_hit_animation_event = "charge_react",
+		falloff_to_speed = 8,
+		dodge = true,
+		first_person_animation_event = "shade_stealth_ability",
+		first_person_animation_end_event_hit = "dodge_bwd",
+		duration = 0.75,
+		initial_speed = 25,
+		animation_event = "zealot_active_ability_charge_start",
+		damage = {
+			depth_padding = 0.4,
+			height = 1.8,
+			collision_filter = "filter_explosion_overlap_no_player",
+			hit_zone_hit_name = "full",
+			ignore_shield = true,
+			interrupt_on_max_hit_mass = true,
+			power_level_multiplier = 0.8,
+			interrupt_on_first_hit = false,
+			damage_profile = "heavy_slashing_linesman",
+			width = 1.5,
+			allow_backstab = true,
+			stagger_angles = {
+				max = 90,
+				min = 45
+			},
+			on_interrupt_blast = {
+				allow_backstab = false,
+				radius = 3,
+				power_level_multiplier = 1,
+				hit_zone_hit_name = "full",
+				damage_profile = "heavy_slashing_linesman",
+				ignore_shield = false,
+				collision_filter = "filter_explosion_overlap_no_player"
+			}
+		}
+	}
+
+	career_extension:start_activated_ability_cooldown()
+	self:_play_vo()
+end)
+
 
 -- Bounty Hunter
 table.insert(PassiveAbilitySettings.wh_2.buffs, "victor_bountyhunter_activate_passive_on_melee_kill")
@@ -1169,7 +1309,7 @@ mod:hook_origin(PassiveAbilityWarriorPriest, "modify_resource", function (self, 
 
 	local client_multiplier = 1
 
-	if not is_server then
+	if not Managers.state.network.is_server then
 		client_multiplier = 1.75
 	end
 
