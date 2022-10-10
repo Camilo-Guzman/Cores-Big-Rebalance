@@ -1,0 +1,11 @@
+mod = [
+	"Weapon Balance"
+]
+
+package = [
+	"resource_packages/Weapon Balance/Weapon Balance"
+]
+
+lua = [
+	"scripts/mods/Weapon Balance/*"
+]
