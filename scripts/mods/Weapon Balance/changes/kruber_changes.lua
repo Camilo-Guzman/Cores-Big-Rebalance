@@ -509,7 +509,6 @@ mod:hook_origin(CareerAbilityESMercenary, "_run_ability", function(self, new_ini
 
 	DamageUtils.create_explosion(world, owner_unit, position, rotation, explosion_template, scale, damage_source, is_server, is_husk, owner_unit, career_power_level, false, owner_unit)
 end)
-mod:echo("merc ok")
 
 --Footknight--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --Passive Changes
@@ -842,9 +841,6 @@ mod:modify_talent("es_knight", 6, 2, {
 })
 mod:add_text("rebaltourn_markus_knight_heavy_buff_desc", "Valiant Charge increases Melee Power by 50.0%% for 6 seconds.")
 
-mod:echo("foot ok")
-
-
 --Huntsman
 --Passive Changes
 mod:modify_talent_buff_template("empire_soldier", "markus_huntsman_passive_crit_aura", {
@@ -1001,7 +997,7 @@ mod:add_text("gs_hs_4_3_desc", "Ranged kills restore thp equal to a quarter of b
 --	}
 --})
 --mod:add_text("gs_hs_5_2_desc", "Gain 5%% dr when killing elites or specials for 15 seconds. Stacks 4 times.")
---mod:echo("hunt ok")
+
 
 --Grail Knight
 --Passive Changes
@@ -1103,5 +1099,3 @@ mod:hook_origin(PassiveAbilityQuestingKnight, "_get_side_quest_challenge", funct
 	return side_quest_challenge
 end)
 
-
-mod:echo("grail ok")

@@ -1273,5 +1273,3 @@ mod:modify_talent("bw_unchained", 6, 2, {
 mod:add_text("sienna_unchained_activated_ability_fire_aura_desc", "Living Bomb grants Sienna a scorching aura that ignites nearby enemies for 10 seconds, causing damage over time. Increases the stagger power of Living Bomb. Each enemy hit by Living Bomb increases power by 5.0%% for 15 seconds. Stacks up to 5 times.")
 
 
-
-mod:echo("Sienna ok")

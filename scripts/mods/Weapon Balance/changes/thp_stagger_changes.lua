@@ -1169,17 +1169,10 @@ mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (play
 		end
 
 		if target_index and target_index < 5 and breed and not breed.is_hero and (attack_type == "light_attack" or attack_type == "heavy_attack" or attack_type == "action_push") and not is_corpse then
-			--mod:echo("heal_amount")
-			--mod:echo("target_index")
-			--mod:echo("attack_type")
-			--mod:echo(heal_amount)
-			--mod:echo(target_index)
-			--mod:echo(attack_type)
 			DamageUtils.heal_network(player_unit, player_unit, heal_amount, "heal_from_proc")
 		end
 	end
 end)
-mod:echo("push drag")
 mod:add_buff_template("rebaltourn_vanguard", {
 	multiplier = 1,
 	name = "vanguard",

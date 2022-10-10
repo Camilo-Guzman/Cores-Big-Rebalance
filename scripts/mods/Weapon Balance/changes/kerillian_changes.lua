@@ -1408,14 +1408,5 @@ mod:modify_talent("we_thornsister", 2, 3, {
     }
 })
 
---mod:modify_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_temp_health_funnel_aura_buff", {
---    multiplier = 0.5
---})
-
 ExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion.explosion.radius = 5.5
 ExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion_improved.explosion.radius = 5.5
-
-
-
-
-mod:echo("Elf ok")

@@ -372,8 +372,6 @@ for item_template_name, item_template in pairs(Weapons) do
 	end
 end
 
-
-
 mod:network_register("rpc_activate_buffed_enemies", function (sender, enable)
 	local weapon_balance_active = get_mod("Weapon Balance")
 	if not weapon_balance_active then
@@ -384,7 +382,6 @@ end)
 mod.on_user_joined = function (player)
 	mod:network_send("rpc_activate_buffed_enemies", player.peer_id)
 end
-
 
 mod.on_enabled = function (self)
 	mod:echo("Weapon Balance enabled")

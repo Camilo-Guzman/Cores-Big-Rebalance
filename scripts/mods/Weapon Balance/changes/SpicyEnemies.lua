@@ -1,5 +1,6 @@
 local mod = get_mod("Weapon Balance")
 
+--Buffs for enemies used in Dutch Spice. Not put in Dutch Spice itself because that would be problematic if ran with a balance mod like this one.
 Managers.package:load("resource_packages/mutators/mutator_curse_bolt_of_change", "global")
 Managers.package:load("resource_packages/mutators/mutator_curse_belakor_totems", "global")
 Managers.package:load("resource_packages/mutators/mutator_curse_grey_wings", "global")

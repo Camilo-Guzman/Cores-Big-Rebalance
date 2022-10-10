@@ -400,8 +400,6 @@ mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_piston_powered_
 --BuffTemplates.deus_guard_aura.buffs[1].duration = 10
 --BuffTemplates.deus_guard_aura.buffs[1].icon = "bardin_ironbreaker_regen_stamina_on_charged_attacks"
 
-mod:echo("IB ok")
-
 --Ranger Veteran--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 mod:add_talent_buff_template("dwarf_ranger", "gs_increased_dupe_healing", {
 	stat_buff = "not_consume_medpack",
@@ -689,8 +687,6 @@ mod:hook_origin(ActionCareerDRRanger, "_create_smoke_screen", function (self)
 	})
 end)
 
-mod:echo("RV ok?")
-
 --Slayer
 mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_increased_defence", {
 	stat_buff = "damage_taken",
@@ -736,7 +732,6 @@ mod:modify_talent("dr_slayer", 2, 1, {
 	}
 })
 mod:add_text("gs_slayer_weapon_combos_desc", "Gain 15%% power if wielding 2 2handed weapons. Gain 10%% attackspeed if wielding 2 1handed weapons. Dead talent if not.")
-mod:echo("2")
 
 mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_crit_chance_buff", {
 	icon = "victor_zealot_attack_speed_on_health_percent",
@@ -1099,8 +1094,6 @@ mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_double_ability_re
 })
 mod:add_text("bardin_slayer_activated_ability_leap_damage_desc", "Increases attack damage while airborne during leap by 150%%. Leap can be activated a second time within 10 seconds.")
 
-
-mod:echo("Slayer ok")
 --Engineer Talents
 mod:add_text("career_passive_desc_dr_4a", "Killing enemies in melee restores 10% Ammo, 30% Ability bar and removes 30% of max overcharge. Kills needed depends on the health of the enemies. Charged Critical melee attacks cause an Explosion that spreads burn.")
 mod:add_text("career_passive_name_dr_4a", "Scrap Collector")
@@ -1438,4 +1431,3 @@ mod:hook_origin(ActionCareerDREngineerCharge, "init", function (self, world, ite
 	self._buff_to_add = "bardin_engineer_pump_buff"
 end)
 
-mod:echo("Bardin ok")
