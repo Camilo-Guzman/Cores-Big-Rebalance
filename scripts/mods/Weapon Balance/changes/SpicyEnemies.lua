@@ -114,7 +114,7 @@ mod:add_buff_template("nurgle_mass_buff_dutch", {
 })
 mod:add_buff_template("ai_health_buff_dutch", {
     remove_buff_func = "remove_max_health_buff_for_ai",
-    name = "curse_khorne_champions_max_health",
+    name = "ai_health_buff_dutch",
     apply_buff_func = "apply_max_health_buff_for_ai",
     multiplier = 1,
 })
@@ -327,7 +327,7 @@ mod:add_buff_template("khorne_ranged_debuff_dutch_aoe", {
     apply_buff_func = "apply_generic_aoe",
     in_range_units_buff_name = "curse_khorne_champions_ranged_debuff",
     range_check = {
-        radius = 5,
+        radius = 7,
         update_rate = 0.01,
         only_players = true,
         unit_left_range_func = "unit_left_range_generic_buff",
@@ -350,7 +350,7 @@ mod:add_buff_template("khorne_melee_debuff_dutch_aoe", {
     apply_buff_func = "apply_generic_aoe",
     in_range_units_buff_name = "curse_khorne_champions_melee_debuff",
     range_check = {
-        radius = 5,
+        radius = 7,
         update_rate = 0.01,
         only_players = true,
         unit_left_range_func = "unit_left_range_generic_buff",
@@ -373,7 +373,7 @@ mod:add_buff_template("khorne_buff_dutch_aoe", {
     in_range_units_buff_name = "curse_khorne_champions_buff",
     range_check = {
         unit_left_range_func = "unit_left_range_champions_aoe",
-        radius = 5,
+        radius = 7,
         update_rate = 1,
         unit_entered_range_func = "unit_entered_range_champions_aoe"
     }
@@ -397,7 +397,7 @@ mod:add_buff_template("khorne_buff_dutch_fx", {
 mod:add_buff_template("khorne_champion_decal", {
 	decal = "units/decals/deus_decal_bloodstorm_inner",
 	name = "khorne_decal",
-	decal_scale = 5,
+	decal_scale = 7,
 	buff_func = "remove_linked_unit",
     event = "on_death",
     remove_buff_func = "remove_generic_decal",
@@ -421,22 +421,5 @@ mod:add_buff_template("khorne_prop_dutch", {
         skaven_storm_vermin_champion = 1.9
     }
 })
-mod:add_buff_template("khorne_prop_dutch", {
-    unit_name = "units/props/deus_bloodgod_curse/deus_bloodgod_curse_01",
-    name = "curse_khorne_champions_unit",
-    buff_func = "remove_linked_unit",
-    event = "on_death",
-    remove_buff_func = "remove_linked_unit",
-    apply_buff_func = "curse_khorne_champions_unit_link_unit",
-    z_offset = {
-        default = 2,
-        chaos_raider = 2,
-        beastmen_bestigor = 1.9,
-        chaos_warrior = 2.4,
-        skaven_storm_vermin_commander = 1.9,
-        skaven_storm_vermin = 1.9,
-        skaven_storm_vermin_with_shield = 1.9,
-        skaven_storm_vermin_champion = 1.9
-    }
-})
+
 

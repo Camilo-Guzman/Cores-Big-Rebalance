@@ -27,6 +27,7 @@ Managers.package:load("resource_packages/mutators/mutator_curse_blood_storm", "g
 Managers.package:load("resource_packages/dlcs/mutators_batch_04", "global")
 Managers.package:load("resource_packages/careers/wh_priest", "global")
 Managers.package:load("resource_packages/careers/bw_unchained", "global")
+Managers.package:load("resource_packages/dlcs/wizards_part_2", "global")
 
 NewSpawnUnitTemplates = NewSpawnUnitTemplates or {}
 
@@ -97,6 +98,7 @@ ExplosionTemplates.fireball_charged.explosion = {
 	damage_profile = "fireball_charged_explosion",
 	effect_name = "fx/wpnfx_drake_pistols_projectile_impact"
 }
+
 Weapons.staff_fireball_fireball_template_1.actions.action_one.shoot_charged.impact_data = {
 	damage_profile = "staff_fireball_charged",
 	aoe = ExplosionTemplates.fireball_charged
@@ -503,6 +505,10 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, a
 				if attacked_health_extension:current_health_percent() <= 0.9 or attacked_health_extension:current_max_health_percent() <= 0.9 then
 					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_ranged_to_wounded")
 				end
+
+				if first_hit then
+					damage = buff_extension:apply_buffs_to_value(damage, "first_ranged_hit_damage")
+				end
 			end
 
 			local weapon_type = weapon_template.weapon_type
@@ -590,7 +596,8 @@ NewExplosionTemplates.waystalker_poison_explosion.explosion = {
 	no_prop_damage = true,
 	sound_event_name = "thorn_hit_poison",
 	damage_profile = "heavy_poison_aoe",
-	effect_name = "fx/thornwall_poison_spikes"
+	effect_name = "fx/thornwall_poison_spikes",
+	no_friendly_fire = true
 }
 NewExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion_no_apply = {}
 NewExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion_no_apply.explosion = {
@@ -598,6 +605,23 @@ NewExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion_no_ap
 	radius = 5.5,
 	explosion_right_scaling = 0.1,
 	hit_sound_event = "thorn_wall_damage_heavy",
+	effect_name = "fx/thornwall_spike_damage",
+	sound_event_name = "career_ability_kerilian_sister_wall_spawn_damage",
+	hit_sound_event_cap = 1,
+	alert_enemies = true,
+	no_friendly_fire = true,
+	alert_enemies_radius = 10,
+	damage_type = "kinetic",
+	damage_profile = "thorn_wall_explosion_improved_damage",
+	explosion_forward_scaling = 0.5
+}
+NewExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion = {}
+NewExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion.explosion = {
+	use_attacker_power_level = true,
+	radius = 6.5,
+	explosion_right_scaling = 0.1,
+	hit_sound_event = "thorn_wall_damage_heavy",
+	dot_template_name = "thorn_sister_passive_poison",
 	effect_name = "fx/thornwall_spike_damage",
 	sound_event_name = "career_ability_kerilian_sister_wall_spawn_damage",
 	hit_sound_event_cap = 1,
@@ -677,6 +701,23 @@ NewExplosionTemplates.warrior_priest_lightning_explosion_strong.explosion = {
 	}
 }
 
+NewExplosionTemplates.witch_hunter_tag_explosion = {}
+NewExplosionTemplates.witch_hunter_tag_explosion.explosion = {
+	use_attacker_power_level = true,
+	radius = 100,
+	no_prop_damage = true,
+	max_damage_radius = 2,
+	always_hurt_players = false,
+	alert_enemies = true,
+	alert_enemies_radius = 15,
+	attack_template = "drakegun",
+	damage_type = "grenade",
+	damage_profile = "dummy",
+	ignore_attacker_unit = true,
+	no_friendly_fire = true,
+}
+
+
 for name, templates in pairs(NewExplosionTemplates) do
 	templates.name = name
 end
@@ -692,7 +733,7 @@ table.merge_recursive(ExplosionTemplates, NewExplosionTemplates)
 Weapons.sienna_scholar_career_skill_weapon.actions.action_career_release.default.impact_data = { damage_profile = "fire_spear_trueflight", aoe = ExplosionTemplates.overcharge_explosion_skull  }
 
 DamageProfileTemplates.overcharge_explosion.stagger_duration_modifier = 3
-DamageProfileTemplates.overcharge_explosion.default_target.power_distribution.attack = 0.35
+DamageProfileTemplates.overcharge_explosion.default_target.power_distribution.attack = 0.15
 DamageProfileTemplates.overcharge_explosion.armor_modifier.attack = { 1, 0.5, 2.5, 1, 0.5, 0.25 }
 DamageProfileTemplates.overcharge_explosion.armor_modifier.impact = { 0.5, 0.5, 1, 0.5, 1.5, 0.5 }
 DamageProfileTemplates.overcharge_explosion.default_target.power_distribution.impact = 1
@@ -702,13 +743,14 @@ ActivatedAbilitySettings.we_3[1].cooldown = 50
 
 mod:add_talent_buff_template("wood_elf", "gs_dash_ult_toggle", {
 	icon = "kerillian_maidenguard_activated_ability",
-	max_stacks = 1
+	max_stacks = 1,
+	debuff = true
 })
 
 mod:add_talent_buff_template("wood_elf", "gs_dash_ult_toggle_function", {
 	update_func = "toggle_ult_type",
 	max_stacks = 1,
-	buff_to_add = "gs_dash_ult_toggle"
+	buff_to_add = "gs_dash_ult_toggle",
 })
 
 mod:add_buff_function("toggle_ult_type", function (unit, buff, params)
@@ -745,20 +787,20 @@ mod:add_buff_function("toggle_ult_type", function (unit, buff, params)
 end)
 
 --Shooting trough allies still gives ult back
-mod:add_proc_function("victor_bounty_hunter_reduce_activated_ability_cooldown_railgun", function (player, buff, params)
-	local player_unit = player.player_unit
+mod:add_proc_function("victor_bounty_hunter_reduce_activated_ability_cooldown_railgun", function (owner_unit, buff, params)
 
-	if ALIVE[player_unit] then
+	if ALIVE[owner_unit] then
 		local hit_zone = params[3]
 		local target_number = params[4]
 		local buff_type = params[5]
+		local damage_dealt = params[2]
 
 		if target_number then
 			buff.can_trigger = true
 		end
 
 		if buff.can_trigger and buff_type == "RANGED_ABILITY" and (hit_zone == "head" or hit_zone == "neck") then
-			local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+			local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 			local buff_to_add = buff.template.buff_to_add
 
 			buff_extension:add_buff(buff_to_add)
@@ -767,10 +809,9 @@ mod:add_proc_function("victor_bounty_hunter_reduce_activated_ability_cooldown_ra
 		end
 	end
 end)
-mod:add_proc_function("kerillian_waywatcher_reduce_activated_ability_cooldown", function (player, buff, params)
-	local player_unit = player.player_unit
+mod:add_proc_function("kerillian_waywatcher_reduce_activated_ability_cooldown", function (owner_unit, buff, params)
 
-	if Unit.alive(player_unit) then
+	if Unit.alive(owner_unit) then
 		local hit_zone = params[3]
 		local target_number = params[4]
 		local buff_type = params[5]
@@ -780,7 +821,7 @@ mod:add_proc_function("kerillian_waywatcher_reduce_activated_ability_cooldown", 
 		end
 
 		if buff.can_trigger and buff_type == "RANGED_ABILITY" and (hit_zone == "head" or hit_zone == "neck") then
-			local career_extension = ScriptUnit.extension(player_unit, "career_system")
+			local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 
 			career_extension:reduce_activated_ability_cooldown_percent(buff.multiplier)
 
@@ -792,7 +833,8 @@ end)
 mod:add_talent_buff_template("wood_elf", "gs_wall_ult_toggle", {
 	icon = "kerillian_thornsister_activated_ability",
 	max_stacks = 1,
-	perk = "wall_swap"
+	perk = "wall_swap",
+	debuff = true
 })
 table.insert(require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names"), "wall_swap")
 
@@ -1219,7 +1261,7 @@ SpawnUnitTemplates.thornsister_thorn_wall_unit = {
 mod:hook_origin(ActionMeleeStart, "client_owner_post_update", function (self, dt, t, world)
 	local action = self.current_action
 	local owner_unit = self.owner_unit
-	local action_start_time = self._action_start_time
+	local action_start_time = self.action_start_t
 	local blocking_charge = action.blocking_charge
 	local status_extension = self.status_extension
 
@@ -1298,7 +1340,7 @@ mod:hook_origin(GenericStatusExtension, "init", function (self, extension_init_c
 	self.pacing_intensity_decay_delay = 0
 	self.move_speed_multiplier = 1
 	self.move_speed_multiplier_timer = 1
-	self.invisible = false
+	self.invisible = {}
 	self.crouching = false
 	self.blocking = false
 	self.override_blocking = nil
@@ -1390,8 +1432,7 @@ mod:hook_origin(GenericStatusExtension, "init", function (self, extension_init_c
 	end
 
 	self._intoxication_level = 0
-	self.stealth_counter = 0
-	self.noclip_counter = 0
+	self.noclip = {}
 	self._incapacitated_outline_ids = {}
 	self._assisted_respawn_outline_id = -1
 	self._invisible_outline_id = -1
@@ -1511,3 +1552,11 @@ mod:hook_origin(GenericStatusExtension, "set_wounded", function (self, wounded, 
 		end
 	end
 end)
+
+NewStatBuffApplicationMethods = NewStatBuffApplicationMethods or {}
+
+NewStatBuffApplicationMethods = {
+	first_ranged_hit_damage = "stacking_multiplier"
+}
+
+table.merge_recursive(StatBuffApplicationMethods, NewStatBuffApplicationMethods)

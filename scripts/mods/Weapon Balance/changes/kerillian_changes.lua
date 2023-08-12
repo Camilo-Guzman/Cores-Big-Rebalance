@@ -135,13 +135,11 @@ function mod.add_buff(self, owner_unit, buff_name)
     end
 end
 
-mod:add_proc_function("reduce_activated_ability_cooldown", function (player, buff, params)
-	local player_unit = player.player_unit
-
-	if Unit.alive(player_unit) then
+mod:add_proc_function("reduce_activated_ability_cooldown", function (owner_unit, buff, params)
+	if Unit.alive(owner_unit) then
 		local attack_type = params[2]
 		local target_number = params[4]
-		local career_extension = ScriptUnit.extension(player_unit, "career_system")
+		local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 
 		if not attack_type or attack_type == "heavy_attack" or attack_type == "light_attack" then
 			career_extension:reduce_activated_ability_cooldown(buff.bonus)
@@ -200,14 +198,81 @@ mod:hook_origin(ActionCareerWEWaywatcher, "client_owner_post_update", function (
 		end
 	end
 end)
-local function is_server()
-	return Managers.player.is_server
-end
+
+table.insert(PassiveAbilitySettings.we_3.buffs, "faster_bows")
+mod:add_talent_buff_template("wood_elf", "faster_bows", {
+    stat_buff = "throw_speed_increase",
+    multiplier = 0.25
+})
+mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_passive_increased_ammunition", {
+    multiplier = 0.5
+})
+
+mod:add_text("career_passive_desc_we_3b_3", "Increase ammo capacity by 50%.")
+mod:add_text("career_passive_desc_we_3d_2", "Increase ranged attackspeed by 25%.")
+mod:hook_origin(ActionUtils, "get_action_time_scale", function (unit, action_settings, is_animation, custom_value)
+	local time_scale = custom_value or action_settings.anim_time_scale or 1
+
+	if unit and Unit.alive(unit) then
+		local buff_extension = ScriptUnit.has_extension(unit, "buff_system")
+
+		if buff_extension then
+			local custom_anim_time_scale_mult = action_settings.custom_anim_time_scale_mult
+
+			if custom_anim_time_scale_mult then
+				time_scale = time_scale * custom_anim_time_scale_mult(unit, time_scale, is_animation)
+			end
+
+			local inventory_extension = ScriptUnit.has_extension(unit, "inventory_system")
+			local wielded_slot_template = inventory_extension:get_wielded_slot_item_template()
+
+			if wielded_slot_template then
+				local buff_type = wielded_slot_template.buff_type
+				local is_melee = MeleeBuffTypes[buff_type]
+				local is_ranged = RangedBuffTypes[buff_type]
+				local weapon_type = wielded_slot_template.weapon_type
+                local weapon_type_bow = wielded_slot_template.weapon_type_bow
+
+				if is_melee then
+					time_scale = buff_extension:apply_buffs_to_value(time_scale, "attack_speed")
+				elseif is_ranged then
+					time_scale = buff_extension:apply_buffs_to_value(time_scale, "attack_speed")
+				end
+
+				if weapon_type and weapon_type == "DRAKEFIRE" then
+					time_scale = buff_extension:apply_buffs_to_value(time_scale, "attack_speed_drakefire")
+				end
+
+                if weapon_type_bow then
+                    time_scale = buff_extension:apply_buffs_to_value(time_scale, "throw_speed_increase")
+                end
+
+				if action_settings.scale_chain_window_by_charge_time_buff or (action_settings.scale_anim_by_charge_time_buff and is_animation) then
+					local charge_speed = buff_extension:apply_buffs_to_value(1, "reduced_ranged_charge_time")
+					time_scale = time_scale * 1 / charge_speed
+				end
+			end
+		end
+	end
+
+	return time_scale
+end)
+
+mod:hook_origin(ActionCareerWEWaywatcher, "init", function (self, world, item_name, is_server, owner_unit, damage_unit, first_person_unit, weapon_unit, weapon_system)
+	ActionCareerWEWaywatcher.super.init(self, world, item_name, is_server, owner_unit, damage_unit, first_person_unit, weapon_unit, weapon_system)
+
+    self.is_server = is_server
+	self.career_extension = ScriptUnit.extension(owner_unit, "career_system")
+	self.inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
+	self.talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+end)
+
 mod:hook_origin(ActionCareerWEWaywatcher, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
 	ActionCareerWEWaywatcher.super.client_owner_start_action(self, new_action, t, chain_action_data, power_level, action_init_data)
 	self:_play_vo()
 
 	self._cooldown_started = false
+    local is_server = self.is_server
     local owner_unit = self.owner_unit
 	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
     local network_manager =  Managers.state.network
@@ -236,9 +301,9 @@ mod:modify_talent("we_waywatcher", 6, 3, {
     buffs = {}
 })
 
-mod:add_text("kerillian_waywatcher_activated_ability_restore_ammo_on_career_skill_special_kill_desc", "Gains effect of a strenght potion when using True Flight.")
+mod:add_text("kerillian_waywatcher_activated_ability_restore_ammo_on_career_skill_special_kill_desc", "Gains effect of a strength potion when using True Flight for 5 seconds.")
 
-ActivatedAbilitySettings.we_3[1].cooldown = 50
+ActivatedAbilitySettings.we_3[1].cooldown = 60
 local sniper_dropoff_ranges = {
 	dropoff_start = 30,
 	dropoff_end = 50
@@ -251,17 +316,17 @@ DamageProfileTemplates.arrow_sniper_ability_piercing.armor_modifier_near.impact 
 DamageProfileTemplates.arrow_sniper_ability_piercing.armor_modifier_far.attack = { 2.15, 1.4, 2, 0.25, 1, 1 }
 DamageProfileTemplates.arrow_sniper_ability_piercing.armor_modifier_far.impact = { 1, 1, 0, 0, 1, 0 }
 DamageProfileTemplates.arrow_sniper_ability_piercing.default_target.boost_curve_coefficient_headshot = 2.5
-DamageProfileTemplates.arrow_sniper_ability_piercing.max_friendly_damage = 30
+DamageProfileTemplates.arrow_sniper_ability_piercing.max_friendly_damage = 20
 DamageProfileTemplates.arrow_sniper_trueflight = {
     charge_value = "projectile",
     no_stagger_damage_reduction_ranged = true,
     critical_strike = {
         attack_armor_power_modifer = {
             1.5,
-            1,
+            0.75,
             1,
             0.25,
-            1,
+            0.75,
             0.6
         },
         impact_armor_power_modifer = {
@@ -328,7 +393,7 @@ DamageProfileTemplates.arrow_sniper_trueflight = {
         },
         range_dropoff_settings = sniper_dropoff_ranges
     },
-	max_friendly_damage = 10
+	max_friendly_damage = 5
 }
 Weapons.kerillian_waywatcher_career_skill_weapon.actions.action_career_hold.prioritized_breeds = {
     skaven_warpfire_thrower = 1,
@@ -341,7 +406,7 @@ Weapons.kerillian_waywatcher_career_skill_weapon.actions.action_career_hold.prio
     beastmen_standard_bearer = 1,
 }
 
-mod:add_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (player, buff, params)
+mod:add_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (owner_unit, buff, params)
     local is_career_skill = params[5]
     local should_consume_shot = nil
 
@@ -364,10 +429,8 @@ mod:modify_talent("we_waywatcher", 2, 3, {
         }
     }
 })
-mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_attack_speed_on_ranged_headshot_buff", {
-    duration = 10,
-    buffer = "server"
-})
+
+mod:add_text("career_passive_desc_we_3a_2", "Kerillian regenerates 2 health for the party every 10 seconds. This does not replace temp health.")
 
 mod:add_buff_function("gs_update_kerillian_waywatcher_regen", function (unit, buff, params, world)
     local t = params.t
@@ -416,46 +479,42 @@ mod:add_buff_function("gs_update_kerillian_waywatcher_regen", function (unit, bu
             end
         end
 
-        if Managers.state.network.is_server and not cooldown_talent then
+        if Managers.state.network.is_server then
             local health_extension = ScriptUnit.extension(unit, "health_system")
             local status_extension = ScriptUnit.extension(unit, "status_system")
             local heal_amount = buff_template.heal_amount
 
             if talent_extension:has_talent("kerillian_waywatcher_improved_regen", "wood_elf", true) then
                 regen_cap = 1
-                heal_amount = heal_amount * 2
+                heal_amount = heal_amount * 1.5
             end
 
             if health_extension:is_alive() and not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() then
-                if talent_extension:has_talent("kerillian_waywatcher_group_regen", "wood_elf", true) then
-                    local side = Managers.state.side.side_by_unit[unit]
+                local side = Managers.state.side.side_by_unit[unit]
 
-                    if not side then
-                        return
-                    end
+                if not side then
+                    return
+                end
 
-                    heal_amount = heal_amount
+                heal_amount = heal_amount
 
-                    local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+                local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
 
-                    for i = 1, #player_and_bot_units, 1 do
-                        if Unit.alive(player_and_bot_units[i]) then
-                            local health_extension = ScriptUnit.extension(player_and_bot_units[i], "health_system")
-                            local status_extension = ScriptUnit.extension(player_and_bot_units[i], "status_system")
+                for i = 1, #player_and_bot_units, 1 do
+                    if Unit.alive(player_and_bot_units[i]) then
+                        local health_extension = ScriptUnit.extension(player_and_bot_units[i], "health_system")
+                        local status_extension = ScriptUnit.extension(player_and_bot_units[i], "status_system")
 
-                            if health_extension:current_permanent_health_percent() <= regen_cap and not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() and health_extension:is_alive() then
-                                --DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "career_passive")
-                                local unit_object_id = network_manager:unit_game_object_id(player_and_bot_units[i])
-                                if unit_object_id then
-                                    DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "heal_from_proc")
-								    DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "career_passive")
-                                end
+                        if health_extension:current_permanent_health_percent() <= regen_cap and not status_extension:is_knocked_down() and not status_extension:is_assisted_respawning() and health_extension:is_alive() then
+                            --DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "career_passive")
+                            local unit_object_id = network_manager:unit_game_object_id(player_and_bot_units[i])
+
+                            if unit_object_id then
+                                DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "heal_from_proc")
+                                DamageUtils.heal_network(player_and_bot_units[i], unit, heal_amount, "career_passive")
                             end
                         end
                     end
-                elseif health_extension:current_permanent_health_percent() <= regen_cap then
-                    DamageUtils.heal_network(unit, unit, heal_amount, "heal_from_proc")
-					DamageUtils.heal_network(unit, unit, heal_amount, "career_passive")
                 end
             end
         end
@@ -464,7 +523,7 @@ mod:add_buff_function("gs_update_kerillian_waywatcher_regen", function (unit, bu
     end
 end)
 
-mod:add_proc_function("gs_poison_explosion_on_special_func", function(player, buff, params)
+mod:add_proc_function("gs_poison_explosion_on_special_func", function(owner_unit, buff, params)
     local hit_data = params[5]
     local attack_type = params[2]
 
@@ -476,11 +535,9 @@ mod:add_proc_function("gs_poison_explosion_on_special_func", function(player, bu
         return
     end
 
-	local player_unit = player.player_unit
-
-	if ALIVE[player_unit] then
+	if ALIVE[owner_unit] then
 		local area_damage_system = Managers.state.entity:system("area_damage_system")
-		local career_extension = ScriptUnit.extension(player_unit, "career_system")
+		local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 		local power_level = career_extension:get_career_power_level()
 		local hit_unit = params[1]
 		local position = POSITION_LOOKUP[hit_unit]
@@ -497,7 +554,7 @@ mod:add_proc_function("gs_poison_explosion_on_special_func", function(player, bu
 
 		WwiseWorld.trigger_event(wwise_world, "talent_power_swing")
 
-		area_damage_system:create_explosion(player_unit, position, rotation, explosion_template, scale, damage_source, power_level, is_critical_strike)
+		area_damage_system:create_explosion(owner_unit, position, rotation, explosion_template, scale, damage_source, power_level, is_critical_strike)
         return true
 	end
 end)
@@ -536,18 +593,20 @@ mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_attack_speed_o
     duration = 10,
 	multiplier = 0.20
 })
+mod:add_text("kerillian_waywatcher_attack_speed_on_ranged_headshot_desc", "Ranged headshots increases attack speed by 20.0%% for 10 seconds.")
 mod:modify_talent("we_waywatcher", 4, 1, {
     description = "gs_increased_healing_passive_waywatcher_desc",
 })
-mod:add_text("gs_increased_healing_passive_waywatcher_desc", "Increases Kerillian's health regenerated from Amaranthe by 100%% and now heals above 50%% health as well.")
+mod:add_text("gs_increased_healing_passive_waywatcher_desc", "Increases Kerillian's health regenerated from Amaranthe by 50%%.")
 
 mod:modify_talent("we_waywatcher", 4, 2, {
     description = "gs_gain_ammo_passive_waywatcher_desc",
 })
-mod:add_text("gs_gain_ammo_passive_waywatcher_desc", "Amaranthe gives Kerillian 5%% ammo every tick. No longer restores health.")
+mod:add_text("gs_gain_ammo_passive_waywatcher_desc", "Amaranthe gives Kerillian 5%% ammo every tick.")
 
 mod:modify_talent_buff_template("wood_elf", "kerillian_waywatcher_passive", {
-    update_func = "gs_update_kerillian_waywatcher_regen"
+    update_func = "gs_update_kerillian_waywatcher_regen",
+    heal_amount = 2
 })
 
 mod:modify_talent("we_waywatcher", 5, 1, {
@@ -576,19 +635,6 @@ mod:add_talent_buff_template("wood_elf", "gs_extra_crit", {
     bonus = 0.1
 })
 
-mod:add_proc_function("kerillian_waywatcher_consume_extra_shot_buff", function (player, buff, params)
-    local is_career_skill = params[5]
-    local should_consume_shot = nil
-
-    if is_career_skill == "RANGED_ABILITY" or is_career_skill == nil then
-        should_consume_shot = false
-    else
-        should_consume_shot = true
-    end
-
-    return should_consume_shot
-end)
-
 mod:add_talent_buff_template("wood_elf", "gs_way_ammo_on_melee_kills", {
     event = "on_kill",
     buff_func = "gs_ammo_on_melee_kills",
@@ -611,7 +657,7 @@ mod:modify_talent("we_waywatcher", 5, 3, {
 })
 mod:add_text("gs_way_ammo_on_melee_kills_desc", "Receive 5%% ammo for melee kills that would provide 40 kill thp.")
 
-mod:add_text("kerillian_waywatcher_activated_ability_piercing_shot_desc", "Trueflight Volley fires 3 additional arrows.")
+mod:add_text("kerillian_waywatcher_activated_ability_additional_projectile_desc", "Trueflight Volley fires 2 additional arrows.")
 
 --Handmaiden---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ActivatedAbilitySettings.we_2[1].cooldown = 40
@@ -651,7 +697,7 @@ mod:add_buff_template("gs_deus_rally_flag_aoe_buff_remover", {
 mod:add_buff_template("gs_deus_rally_flag_aoe_buff_remover_long", {
 	remove_buff_func = "remove_deus_rally_flag",
 	name = "deus_rally_flag_lifetime",
-	duration = 15
+	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_aoe_buff_effect", {
 	decal = "units/decals/decal_heavens_01",
@@ -921,7 +967,7 @@ mod:hook_origin(CareerAbilityWEMaidenGuard, "_run_ability", function(self)
 			end
 		end
 
-		status_extension:add_noclip_stacking()
+		status_extension:set_noclip(true, "skill_maiden_guard")
 
 		if network_manager:game() then
 			status_extension:set_is_dodging(true)
@@ -1025,14 +1071,14 @@ mod:add_buff_template("gs_deus_rally_flag_buff_protection_duration", {
 })
 mod:add_buff_template("gs_deus_rally_flag_buff_protection_duration_long", {
 	icon = "kerillian_maidenguard_passive",
-	duration = 15,
+	duration = 10,
 	max_stacks = 1,
 	refresh_durations = true
 })
 mod:add_buff_template("gs_deus_rally_flag_heal_buff_long_dash", {
 	stat_buff = "healing_received",
 	multiplier = 0.2,
-	duration = 15
+	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_buff_protection_dash", {
 	icon = "kerillian_maidenguard_activated_ability_invis_duration",
@@ -1059,12 +1105,12 @@ mod:add_buff_template("gs_deus_rally_flag_heal_buff_dash", {
 mod:add_buff_template("gs_deus_rally_flag_buff_long_dash", {
 	stat_buff = "max_health",
 	multiplier = 0.2,
-	duration = 15
+	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_heal_buff_long_dash", {
 	stat_buff = "healing_received",
 	multiplier = 0.2,
-	duration = 15
+	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_aoe_buff_grabber_protection_buff_dash", {
 	icon = "kerillian_maidenguard_activated_ability_buff_on_enemy_hit",
@@ -1087,14 +1133,13 @@ local function is_server()
 	return Managers.player.is_server
 end
 
---local side_player = Managers.state.side.side_by_unit[player_unit]
+--local side_player = Managers.state.side.side_by_unit[owner_unit]
 --local side_damage = Managers.state.side.side_by_unit[attacker_unit]
-mod:add_proc_function("gs_maidenguard_reset_unharmed_buff", function (player, buff, params)
-    local player_unit = player.player_unit
+mod:add_proc_function("gs_maidenguard_reset_unharmed_buff", function (owner_unit, buff, params)
     local attacker_unit = params[1]
     local damage_amount = params[2]
     local damaged = true
-    local side = Managers.state.side.side_by_unit[player_unit]
+    local side = Managers.state.side.side_by_unit[owner_unit]
     local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
     local shot_by_friendly = false
     local allies = (player_and_bot_units and #player_and_bot_units) or 0
@@ -1110,17 +1155,17 @@ mod:add_proc_function("gs_maidenguard_reset_unharmed_buff", function (player, bu
         end
     end
 
-    if Unit.alive(player_unit) and not shot_by_friendly and damaged then
-        local buff_extension = ScriptUnit.has_extension(player_unit, "buff_system")
+    if Unit.alive(owner_unit) and not shot_by_friendly and damaged then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
         local buff_name = "kerillian_maidenguard_power_level_on_unharmed_cooldown"
         local network_manager = Managers.state.network
         local network_transmit = network_manager.network_transmit
-        local unit_object_id = network_manager:unit_game_object_id(player_unit)
+        local unit_object_id = network_manager:unit_game_object_id(owner_unit)
         local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
 
         if is_server() then
             buff_extension:add_buff(buff_name, {
-                attacker_unit = player_unit
+                attacker_unit = owner_unit
             })
         else
             network_transmit:send_rpc_server("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, true)
@@ -1131,13 +1176,14 @@ mod:add_proc_function("gs_maidenguard_reset_unharmed_buff", function (player, bu
 end)
 
 mod:modify_talent_buff_template("wood_elf", "kerillian_maidenguard_power_level_on_unharmed", {
-    multiplier = 0.25,
-    buff_func = "gs_maidenguard_reset_unharmed_buff"
+    multiplier = 0.20,
+    buff_func = "gs_maidenguard_reset_unharmed_buff",
+    stat_buff = "power_level_melee"
 })
 mod:modify_talent_buff_template("wood_elf", "kerillian_maidenguard_power_level_on_unharmed_cooldown", {
     duration = 5
 })
-mod:add_text("kerillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 5 seconds, increases Kerillian's power by 25.0%%. Reset upon taking damage from an enemy.")
+mod:add_text("kerillian_maidenguard_power_level_on_unharmed_desc", "After not taking damage for 5 seconds, increases Kerillian's melee power by 20.0%%. Reset upon taking damage from an enemy.")
 mod:modify_talent("we_maidenguard", 2, 2, {
     buffs = {
 			"gs_kerillian_maidenguard_crit_chance_allies"
@@ -1248,18 +1294,55 @@ mod:modify_talent("we_maidenguard", 6, 3, {
 })
 mod:add_text("gs_we_maidenguard_6_1", "Banner also grants immunity to aoe damage.")
 mod:add_text("gs_we_maidenguard_6_2", "Banner now increases max health by 50%%")
-mod:add_text("gs_we_maidenguard_6_3", "Banner also grants immunity to grabbers. Banner duration is now 20 seconds")
+mod:add_text("gs_we_maidenguard_6_3", "Banner also grants immunity to grabbers. Banner duration is now 10 seconds")
 
 --Shade
-mod:add_proc_function("shade_backstab_ammo_gain", function (player, buff, params)
-    local player_unit = player.player_unit
-    local buff_extension = ScriptUnit.has_extension(player_unit, "buff_system")
+CareerSettings.we_shade.attributes.max_hp = 125
+table.insert(PassiveAbilitySettings.we_1.buffs, "kerillian_shade_passive_stealth_parry_buff_remover")
+
+mod:add_text("career_passive_desc_we_1d", "Parrying an Attack causes your next melee attack to be a guaranteed critical hit")
+mod:modify_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth_parry", {
+    event = "on_timed_block_long",
+    buff_to_add = "kerillian_shade_passive_stealth_parry_buff",
+})
+
+mod:add_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth_parry_buff", {
+    stat_buff = "critical_strike_chance_melee",
+    bonus = 1,
+    icon = "kerillian_shade_perk_blur",
+    max_stacks = 1
+})
+
+mod:add_talent_buff_template("wood_elf", "kerillian_shade_passive_stealth_parry_buff_remover", {
+    event = "on_critical_hit",
+    buff_func = "remove_shade_passive_crit_buff"
+})
+
+mod:add_proc_function("remove_shade_passive_crit_buff", function (owner_unit, buff, params)
+    if Unit.alive(owner_unit) then
+        local attack_type = params[2]
+
+        if not attack_type or (attack_type ~= "light_attack" and attack_type ~= "heavy_attack") then
+            return
+        end
+
+        local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+        local crit_buff = buff_extension:get_non_stacking_buff("kerillian_shade_passive_stealth_parry_buff")
+
+        if crit_buff then
+            buff_extension:remove_buff(crit_buff.id)
+        end
+    end
+end)
+
+mod:add_proc_function("shade_backstab_ammo_gain", function (owner_unit, buff, params)
+    local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
 
     if buff_extension and not buff_extension:has_buff_type("kerillian_shade_backstabs_replenishes_ammunition_cooldown") then
-        if Unit.alive(player_unit) then
+        if Unit.alive(owner_unit) then
             local weapon_slot = "slot_ranged"
             local ammo_bonus_fraction = buff.template.ammo_bonus_fraction
-            local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+            local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
             local slot_data = inventory_extension:get_slot_data(weapon_slot)
             local right_unit_1p = slot_data.right_unit_1p
             local left_unit_1p = slot_data.left_unit_1p
@@ -1276,6 +1359,21 @@ mod:add_proc_function("shade_backstab_ammo_gain", function (player, buff, params
         buff_extension:add_buff("kerillian_shade_backstabs_replenishes_ammunition_cooldown")
     end
 end)
+mod:modify_talent_buff_template("wood_elf", "kerillian_shade_stacking_headshot_damage_on_headshot_buff", {
+	max_stacks = 5,
+    multiplier = 0.2
+})
+mod:modify_talent_buff_template("wood_elf", "kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy", {
+    multiplier = 0.3
+})
+mod:modify_talent_buff_template("wood_elf", "kerillian_shade_increased_critical_strike_damage", {
+    multiplier = 0.75
+})
+
+mod:add_text("kerillian_shade_increased_damage_on_poisoned_or_bleeding_enemy_desc", "Increases damage by 30.0%% to poisoned or bleeding enemies.")
+mod:add_text("kerillian_shade_increased_critical_strike_damage_desc", "Increases critical strike damage bonus by 75.0%%.")
+mod:add_text("kerillian_shade_stacking_headshot_damage_on_headshot_desc", "Headshots increases headshot damage bonus by 20.0%% for 10 seconds. Stacks up to 5 times.")
+
 mod:modify_talent_buff_template("wood_elf", "kerillian_shade_backstabs_replenishes_ammunition", {
 	ammo_bonus_fraction = 0.05
 })
@@ -1286,40 +1384,93 @@ mod:modify_talent_buff_template("wood_elf", "kerillian_shade_activated_ability_p
 })
 mod:add_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10%% movement speed and 15%% Power with the ability to pass through enemies for 10 seconds.")
 
-mod:add_proc_function("shade_activated_ability_on_hit", function(player, buff, params)
-    local player_unit = player.player_unit
+--Sister of the Thorn
+table.insert(PassiveAbilitySettings.we_thornsister.buffs, "thorn_sister_vent_nerf")
+--table.insert(PassiveAbilitySettings.we_thornsister.buffs, "thorn_sister_lifted_check")
+ActivatedAbilitySettings.we_thornsister[1].cooldown = 50
+mod:add_talent_buff_template("wood_elf", "thorn_sister_vent_nerf", {
+    stat_buff = "vent_speed",
+    multiplier = -0.33
+})
+mod:add_text("career_passive_desc_we_thornsister_a_2", "Melee attacks apply a Poison that deals damage and increasing damage suffered by 15% for 10 seconds.")
 
-    if ALIVE[player_unit] then
-        local hit_unit = params[1]
-        local behind_target = ActionUtils.is_backstab(player_unit, hit_unit)
+mod:add_talent_buff_template("wood_elf", "kerillian_thorn_sister_passive_temp_health_funnel_aura", {
+    buff_func = "thorn_sister_share_temp_health_at_full",
+    event = "on_healed",
+    authority = "server",
+    max_stacks = 1,
+    name = "kerillian_thorn_sister_passive_temp_health_funnel",
+})
 
-        if behind_target then
-            local first_person_extension = ScriptUnit.has_extension(player_unit, "first_person_system")
+mod:add_proc_function("thorn_sister_share_temp_health_at_full", function (owner_unit, buff, params, world)
+    local heal_type = params[3]
+    local healer_unit = params[1]
 
-            if first_person_extension then
-                first_person_extension:play_hud_sound_event("Play_career_ability_shade_backstab")
+    if not ALIVE[owner_unit] then
+        return
+    end
+
+    local self_heal = healer_unit == owner_unit
+    local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+
+    if self_heal and not status_extension:is_permanent_heal(heal_type) then
+        local health_extension = ScriptUnit.extension(owner_unit, "health_system")
+        local current_health = health_extension:current_health_percent()
+
+
+        if current_health == 1 then
+            local heal_amount = params[2]
+
+            if heal_amount > 15 then
+                heal_amount = 15
             end
-        end
 
-        local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
-        local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+            heal_amount = heal_amount / 3
 
-        if talent_extension:has_talent("kerillian_shade_activated_ability_restealth") and buff.template.restealth then
-            local t = Managers.time:time("game")
-            buff.start_time = t - buff.template.duration - 0.05
-            local first_person_extension = ScriptUnit.has_extension(player_unit, "first_person_system")
+            local radius = 100
+            local nearby_player_units = FrameTable.alloc_table()
+            local proximity_extension = Managers.state.entity:system("proximity_system")
+            local broadphase = proximity_extension.player_units_broadphase
 
-            if first_person_extension then
-                first_person_extension:play_hud_sound_event("Play_career_ability_kerillian_shade_enter")
-                first_person_extension:animation_event("shade_stealth_ability")
+            Broadphase.query(broadphase, POSITION_LOOKUP[owner_unit], radius, nearby_player_units)
+
+            local side_manager = Managers.state.side
+            local network_manager = Managers.state.network
+	        local network_transmit = network_manager.network_transmit
+            local heal_type_id = NetworkLookup.heal_types.career_skill
+
+            for _, player_unit in pairs(nearby_player_units) do
+                if not side_manager:is_enemy(owner_unit, player_unit) then
+                    local unit_go_id = network_manager:unit_game_object_id(player_unit)
+
+                    if unit_go_id then
+                        network_transmit:send_rpc_server("rpc_request_heal", unit_go_id, heal_amount, heal_type_id)
+                    end
+                end
             end
-        else
-            buff_extension:remove_buff(buff.id)
         end
     end
 end)
 
---Sister of the Thorn
+mod:add_text("career_passive_desc_we_thornsister_b", "Whenever Kerillian receives temporary health while at full health, the other party members gains temporary health instead.")
+
+--mod:add_talent_buff_template("wood_elf", "thorn_sister_lifted_check", {
+--    update_func = "gs_thorn_sister_lifted_checker",
+--})
+--
+--mod:add_buff_function("gs_thorn_sister_lifted_checker", function(unit, buff, params)
+--	if not Managers.state.network.is_server then
+--		return
+--	end
+--
+--	if not Unit.alive(unit) then
+--        return
+--    end
+--
+--	local vortex_amount = Managers.state.conflict:count_units_by_breed("beastmen_gor")
+--    local name = Managers.state.conflict:last_spawned_unit()
+--end)
+
 ActivatedAbilitySettings.we_thornsister.cooldown = 50
 BuffTemplates.thorn_sister_passive_poison.buffs[1].multiplier = 0.15
 BuffTemplates.thorn_sister_passive_poison_improved.buffs[1].multiplier = 0.15
@@ -1407,6 +1558,8 @@ mod:modify_talent("we_thornsister", 2, 3, {
         }
     }
 })
+
+mod:add_text("kerillian_thorn_sister_faster_passive_desc", "Reduce the cooldown of Radiance by 50%%, taking damage sets the cooldown back 3 seconds.")
 
 ExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion.explosion.radius = 5.5
 ExplosionTemplates.we_thornsister_career_skill_explosive_wall_explosion_improved.explosion.radius = 5.5

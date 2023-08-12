@@ -152,7 +152,7 @@ mod:modify_talent_buff_template("witch_hunter", "victor_witchhunter_guaranteed_c
     duration = 3
 })
 
-mod:add_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Blocking just as an enemy attack is about to hit causes your next melee or ranged attack within 3 seconds to be a guaranteed critical hit. Pushing an enemy increases melee power by 20.0%% for 5 seconds. ")
+mod:add_text("victor_witchhunter_guaranteed_crit_on_timed_block_desc", "Blocking just as an enemy attack is about to hit causes your next melee or ranged attack within 3 seconds to be a guaranteed critical hit. Pushing an enemy increases melee power by 15.0%% for 5 seconds. ")
 
 mod:modify_talent("wh_captain", 5, 3, {
 	description = "gs_whc_ammo_on_melee_kills_desc",
@@ -161,7 +161,7 @@ mod:modify_talent("wh_captain", 5, 3, {
 		"gs_whc_ammo_on_melee_kills"
 	}
 })
-mod:add_text("gs_whc_ammo_on_melee_kills_desc", "Receive 5%% ammo for melee kills that would provide 60 kill thp.")
+mod:add_text("gs_whc_ammo_on_melee_kills_desc", "Enemy kills each grant a value (equal to on-kill THP), each time the value exceeds 60, gain 5%% ammo.")
 
 mod:add_talent_buff_template("witch_hunter", "gs_whc_ammo_on_melee_kills", {
     event = "on_kill",
@@ -176,7 +176,7 @@ mod:add_talent_buff_template("empire_soldier", "gs_display_buff_whc_ammo", {
 })
 
 --Zealot
-mod:add_text("career_passive_desc_wh_1a", "Melee power increased by 30%. Damaging multiple enemies in one swing with a melee weapon causes Zealot to take damage. 0.5 damage per enemy hit.")
+mod:add_text("career_passive_desc_wh_1a", "Melee power increased by 20%. Damaging multiple enemies in one swing with a melee weapon causes Zealot to take damage when above 25% hp. 0.5 damage per enemy hit.")
 PassiveAbilitySettings.wh_1.buffs = {
     "gs_victor_zealot_health_increase",
 	"victor_zealot_passive_uninterruptible_heavy",
@@ -202,7 +202,7 @@ PassiveAbilitySettings.wh_1.perks = {
     },
 }
 mod:add_text("career_passive_name_wh_1d", "Hard to kill.")
-mod:add_text("career_passive_desc_wh_1d", "Healing received increased by 50% when below 50% health. Does not get wounded after going down.")
+mod:add_text("career_passive_desc_wh_1d", "Healing received increased by 50% when below 25% health. Does not get wounded after going down.")
 
 mod:add_talent_buff_template("witch_hunter", "gs_infinite_wounds", {
     perk = "infinite_wounds"
@@ -211,7 +211,7 @@ mod:add_talent_buff_template("witch_hunter", "gs_infinite_wounds", {
 mod:add_talent_buff_template("witch_hunter", "gs_deus_reckless_swings", {
     stat_buff = "power_level_melee",
     max_stacks = 1,
-    multiplier = 0.3,
+    multiplier = 0.2,
     icon = "deus_reckless_swings"
 })
 
@@ -264,7 +264,7 @@ mod:add_buff_function("activate_buff_on_health_percent_zealot_passive", function
     end
 end)
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_health_increase", {
-    activation_health = 0.5,
+    activation_health = 0.25,
     activate_below = true,
     buff_to_add = "gs_victor_zealot_health_increase_buff",
     update_func = "activate_buff_on_health_percent_zealot_passive"
@@ -276,26 +276,25 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_health_increase_b
     multiplier = 0.5
 })
 
-mod:add_proc_function("gs_zealot_damage", function(player, buff, params, world)
+mod:add_proc_function("gs_zealot_damage", function(owner_unit, buff, params, world)
     if not Managers.state.network.is_server then
         return
     end
-
-    local player_unit = player.player_unit
+    
     local target_num = params[4]
     local attack_type = params[2] == "light_attack" or params[2] == "heavy_attack"
     local template = buff.template
     local damage_to_deal = template.damage_to_deal
-    local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
+    local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
 
     if talent_extension:has_talent("victor_zealot_passive_damage_taken", "witch_hunter", true) then
         damage_to_deal = 0.75
     elseif talent_extension:has_talent("victor_zealot_passive_healing_received", "witch_hunter", true) then
-        damage_to_deal = 0.1
+        damage_to_deal = 0.25
     end
 
     if target_num <= 5 and attack_type then
-        DamageUtils.add_damage_network(player_unit, player_unit, damage_to_deal, "torso", "life_drain", nil, Vector3(0, 0, 0), "life_drain", nil, player_unit)
+        DamageUtils.add_damage_network(owner_unit, owner_unit, damage_to_deal, "torso", "life_drain", nil, Vector3(0, 0, 0), "life_drain", nil, owner_unit)
     end
 end)
 
@@ -304,7 +303,7 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_damage_on_hit", {
     authority = "server",
     update_func = "update_server_buff_on_health_percent",
     update_frequency = 0.5,
-    health_threshold = 0.35
+    health_threshold = 0.25
 })
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_damage_on_hit_buff", {
     multiplier = -0.05,
@@ -313,6 +312,69 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_damage_on_hit_buf
     event = "on_hit",
     bonus = 0.25,
     damage_to_deal = 0.5
+})
+
+mod:add_buff_function("gs_activate_scaling_buff_based_on_health_percentage_missing", function(unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	if not Unit.alive(unit) then
+        return
+    end
+
+	local health_extension = ScriptUnit.extension(unit, "health_system")
+	local buff_extension = ScriptUnit.extension(unit, "buff_system")
+	local buff_system = Managers.state.entity:system("buff_system")
+	local template = buff.template
+	local max_health = health_extension:get_max_health()
+	local current_health = health_extension:current_health()
+	local health_percentage_missing = 1 - (current_health / max_health)
+	local stacks_to_add = 0
+	local max_buff_value = template.max_buff_value
+
+	stacks_to_add = health_percentage_missing * max_buff_value
+
+	local buff_to_add = template.buff_to_add
+	local num_buff_stacks = buff_extension:num_buff_type(buff_to_add)
+
+	if not buff.stack_ids then
+		buff.stack_ids = {}
+	end
+
+	if num_buff_stacks < stacks_to_add then
+		local difference = stacks_to_add - num_buff_stacks
+
+		for i = 1, difference, 1 do
+			local buff_id = buff_system:add_buff(unit, buff_to_add, unit, true)
+			local stack_ids = buff.stack_ids
+			stack_ids[#stack_ids + 1] = buff_id
+		end
+	elseif stacks_to_add < num_buff_stacks then
+		local difference = num_buff_stacks - stacks_to_add
+
+		for i = 1, difference, 1 do
+			local stack_ids = buff.stack_ids
+			local buff_id = table.remove(stack_ids, 1)
+
+			buff_system:remove_server_controlled_buff(unit, buff_id)
+		end
+	end
+end)
+
+mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_scaling", {
+	buff_to_add = "gs_victor_zealot_attack_speed_scaling_buff",
+	update_func = "gs_activate_scaling_buff_based_on_health_percentage_missing",
+	update_frequency = 0.2,
+	max_buff_value = 20,
+    name = "gs_victor_zealot_attack_speed_scaling"
+})
+mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_scaling_buff", {
+	max_stacks = 20,
+    name = "gs_victor_zealot_attack_speed_scaling_buff",
+	icon = "victor_zealot_attack_speed_on_health_percent",
+	stat_buff = "attack_speed",
+	multiplier = 0.01
 })
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_3", {
     activation_health = 0.3,
@@ -353,12 +415,10 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_buff
 mod:modify_talent("wh_zealot", 2, 1, {
     description = "zealot_2_1_desc",
     buffs = {
-        "gs_victor_zealot_attack_speed_1",
-        "gs_victor_zealot_attack_speed_2",
-        "gs_victor_zealot_attack_speed_3"
+        "gs_victor_zealot_attack_speed_scaling"
     }
 })
-mod:add_text("zealot_2_1_desc", "Gain 10%% more attackspeed when under 80%% health. Gain 20%% more attackspeed when under 50%% health. Gain 30%% more attackspeed when under 30%% health.")
+mod:add_text("zealot_2_1_desc", "Gain up to 20%% attack speed based on missing health.")
 
 mod:modify_talent("wh_zealot", 2, 2, {
     perks = {}
@@ -386,10 +446,9 @@ mod:add_talent_buff_template("witch_hunter", "zealot_buff_on_damage_display", {
     max_stacks = 100,
 	icon = "markus_mercenary_max_ammo"
 })
-mod:add_proc_function("gs_zealot_damage_tracking", function (player, buff, params)
-	local player_unit = player.player_unit
+mod:add_proc_function("gs_zealot_damage_tracking", function (owner_unit, buff, params)
 
-	if Unit.alive(player_unit) then
+	if Unit.alive(owner_unit) then
 		local attacker_unit = params[1]
 		local damage_amount = params[2]
 		local damage_type = params[3]
@@ -398,10 +457,10 @@ mod:add_proc_function("gs_zealot_damage_tracking", function (player, buff, param
 		local damage_to_take = buff_template.damage_to_take
 
 		if breed and not breed.is_hero then
-			local health_extension = ScriptUnit.has_extension(player_unit, "health_system")
+			local health_extension = ScriptUnit.has_extension(owner_unit, "health_system")
 
 			if health_extension and damage_amount < health_extension:current_health() then
-				local buff_extension = ScriptUnit.has_extension(player_unit, "buff_system")
+				local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
 				if not buff.counter then
 					buff.counter = 0
 				end
@@ -437,7 +496,7 @@ mod:add_proc_function("gs_zealot_damage_tracking", function (player, buff, param
 					local difference = distance - num_buff_stacks
 
 					for i = 1, difference, 1 do
-						local buff_id = buff_system:add_buff(player_unit, display_buff, player_unit, true)
+						local buff_id = buff_system:add_buff(owner_unit, display_buff, owner_unit, true)
 						local stack_ids = buff.stack_ids
 						stack_ids[#stack_ids + 1] = buff_id
 					end
@@ -448,7 +507,7 @@ mod:add_proc_function("gs_zealot_damage_tracking", function (player, buff, param
 						local stack_ids = buff.stack_ids
 						local buff_id = table.remove(stack_ids, 1)
 
-						buff_system:remove_server_controlled_buff(player_unit, buff_id)
+						buff_system:remove_server_controlled_buff(owner_unit, buff_id)
 					end
 				end
 			end
@@ -473,29 +532,30 @@ mod:modify_talent("wh_zealot", 2, 3, {
 })
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_increased_damage_to_first_target", {
     stat_buff = "first_melee_hit_damage",
-    multiplier = 0.25
+    multiplier = 0.15
 })
-mod:add_text("zealot_2_3_desc", "Deal 25%% more damage to the first target hit with each attack.")
+mod:add_text("zealot_2_3_desc", "Deal 15%% more damage to the first target hit with each attack.")
 mod:modify_talent("wh_zealot", 4, 2, {
     description = "zealot_4_2_desc",
     name = "zealot_4_2_name",
     buffer = "both",
     buffs = {
-        "gs_victor_zealot_increased_damage_to_first_target"
+        "gs_victor_zealot_attack_speed_high_health"
     }
 })
 mod:add_text("zealot_4_2_name", "The Good ending")
-mod:add_text("zealot_4_2_desc", "Lower damage taken per enemy hit to 0.1. Gain 10%% attackspeed when above 70%% health.")
+mod:add_text("zealot_4_2_desc", "Lower damage taken per enemy hit to 0.25. Gain 10%% attackspeed based on percentage of health remaining.")
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_high_buff", {
     icon = "victor_zealot_passive_healing_received",
-    stat_buff = "attack-speed",
-    multiplier = 0.1,
-    max_stacks = 1,
+    stat_buff = "attack_speed",
+    multiplier = 0.01,
+    max_stacks = 10,
 })
 mod:add_talent_buff_template("witch_hunter", "gs_victor_zealot_attack_speed_high_health", {
-    activation_health = 0.7,
+    update_frequency = 0.2,
+	max_buff_value = 10,
     buff_to_add = "gs_victor_zealot_attack_speed_high_buff",
-    update_func = "activate_buff_on_health_percent"
+    update_func = "gs_activate_scaling_buff_based_on_health_percentage"
 })
 mod:modify_talent("wh_zealot", 4, 3, {
     description = "zealot_4_3_desc",
@@ -530,7 +590,7 @@ mod:modify_talent("wh_zealot", 5, 1, {
         "gs_victor_attack_speed_on_hit",
     }
 })
-mod:add_text("zealot_5_1_desc", "Gain 15%% attack speed for 5 seconds when taking damage.")
+mod:add_text("zealot_5_1_desc", "Gain 10%% attack speed for 5 seconds when taking damage.")
 mod:add_talent_buff_template("witch_hunter", "gs_victor_attack_speed_on_hit", {
     event = "on_damage_taken",
     buff_to_add = "gs_victor_attack_speed_on_hit_buff",
@@ -538,7 +598,7 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_attack_speed_on_hit", {
 })
 mod:add_talent_buff_template("witch_hunter", "gs_victor_attack_speed_on_hit_buff", {
    stat_buff = "attack_speed",
-   multiplier = 0.15,
+   multiplier = 0.1,
    max_stacks = 1,
    icon = "victor_zealot_move_speed_on_damage_taken",
    duration = 5,
@@ -587,10 +647,10 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_cleave_power_on_hit_buff
    refresh_durations = true
 })
 mod:modify_talent_buff_template("witch_hunter", "victor_zealot_activated_ability_power_on_hit_buff", {
-    multiplier = 0.03,
+    multiplier = 0.025,
     stat_buff = "power_level_melee"
 })
-mod:add_text("victor_zealot_activated_ability_power_on_hit_desc", "Attacks during Holy Fervour increase melee power by 3%% for 5 seconds. Stacks up to 10 times.")
+mod:add_text("victor_zealot_activated_ability_power_on_hit_desc", "Attacks during Holy Fervour increase melee power by 2.5%% for 5 seconds. Stacks up to 10 times.")
 
 mod:add_talent_buff_template("witch_hunter", "zealot_got_your_back_check", {
     buff_to_add = "zealot_got_your_back",
@@ -623,7 +683,7 @@ mod:add_talent_buff_template("witch_hunter", "zealot_got_your_back_buff", {
     multiplier = -0.5
 })
 
-mod:add_text("victor_zealot_activated_ability_ignore_death_desc", "When above 25%% Health you take half of the damage inflicted on nearby allies instead of them.")
+mod:add_text("victor_zealot_activated_ability_ignore_death_desc", "When above 25% Health you take half of the damage inflicted on nearby allies instead of them.")
 
 mod:hook_origin(CareerAbilityWHZealot , "_run_ability", function (self)
 	self:_stop_priming()
@@ -687,7 +747,7 @@ mod:hook_origin(CareerAbilityWHZealot , "_run_ability", function (self)
 		end
 	end
 
-	status_extension:add_noclip_stacking()
+	status_extension:set_noclip(true, "skill_zealot")
 
 	status_extension.do_lunge = {
 		animation_end_event = "zealot_active_ability_charge_hit",
@@ -737,6 +797,10 @@ end)
 -- Bounty Hunter
 table.insert(PassiveAbilitySettings.wh_2.buffs, "victor_bountyhunter_activate_passive_on_melee_kill")
 
+mod:modify_talent_buff_template("witch_hunter", "victor_bountyhunter_activated_ability_railgun_delayed_add", {
+    max_stacks = 1,
+    multiplier = 0.8,
+})
 --Bounty Shotgun ability FF reduction
 DamageProfileTemplates.shot_shotgun_ability.critical_strike.attack_armor_power_modifer = { 1, 0.1, 0.2, 0, 1, 0.025 }
 DamageProfileTemplates.shot_shotgun_ability.critical_strike.impact_armor_power_modifer = { 1, 0.5, 1, 0, 1, 0.05 }
@@ -765,9 +829,48 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_bounty_melee_on_ranged",
     buff_to_add = "gs_victor_bounty_melee_on_ranged_counter",
     buff_func = "add_buff_on_first_target_hit_range"
 })
+
+local function is_server()
+	return Managers.player.is_server
+end
+mod:add_proc_function("add_buff_on_first_target_hit_range", function (owner_unit, buff, params)
+    if ALIVE[owner_unit] then
+        local hit_data = params[5]
+        local attack_type = params[2]
+
+        if not hit_data or hit_data == "n/a" or (hit_data ~= "RANGED" and hit_data ~= "RANGED_ABILITY") then
+            return
+        end
+
+        if attack_type ~= "instant_projectile" and attack_type ~= "projectile" then
+            return
+        end
+
+        local target_number = params[4]
+
+        if target_number < 2 then
+            local buff_template = buff.template
+            local buff_name = buff_template.buff_to_add
+            local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+            local network_manager = Managers.state.network
+            local network_transmit = network_manager.network_transmit
+            local unit_object_id = network_manager:unit_game_object_id(owner_unit)
+            local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
+
+            if is_server() then
+                buff_extension:add_buff(buff_name, {
+                    attacker_unit = owner_unit
+                })
+                network_transmit:send_rpc_clients("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, false)
+            else
+                network_transmit:send_rpc_server("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, true)
+            end
+        end
+    end
+end)
 mod:add_talent_buff_template("witch_hunter", "gs_victor_bounty_melee_on_ranged_counter", {
     reset_on_max_stacks = true,
-    max_stacks = 5,
+    max_stacks = 3,
     on_max_stacks_func = "add_remove_buffs",
     icon = "victor_bountyhunter_melee_damage_on_no_ammo",
     max_stack_data = {
@@ -784,7 +887,7 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_bounty_melee_on_ranged_b
     max_stacks = 1,
     refresh_durations = true
 })
-mod:add_text("victor_bountyhunter_power_burst_on_no_ammo_desc", "Every fifth ranged hit grants 20%% attack speed for 10 seconds.")
+mod:add_text("victor_bountyhunter_power_burst_on_no_ammo_desc", "Every third ranged hit grants 20%% attack speed for 10 seconds.")
 
 mod:add_buff_function("gs_activate_buff_stacks_based_on_clip_size", function (unit, buff, params)
     if not Managers.state.network.is_server then
@@ -854,6 +957,8 @@ mod:modify_talent("wh_bountyhunter", 4, 1, {
     description_values = {},
 })
 mod:add_text("rebaltourn_victor_bountyhunter_blessed_combat_desc", "Melee strikes makes up to the next 6 ranged shots deal 15%% more damage. Ranged hits makes up to the next 6 melee strikes deal 15%% more damage.")
+
+
 PassiveAbilitySettings.wh_2.perks = {
 	{
 		display_name = "career_passive_name_wh_2b",
@@ -881,20 +986,19 @@ mod:add_talent_buff_template("witch_hunter", "gs_victor_bounty_clip_size_buff", 
     stat_buff = "clip_size",
     multiplier = 0.5,
 })
-mod:add_proc_function("gs_victor_bounty_hunter_ammo_fraction_gain_out_of_ammo", function (player, buff, params)
-    local player_unit = player.player_unit
+mod:add_proc_function("gs_victor_bounty_hunter_ammo_fraction_gain_out_of_ammo", function (owner_unit, buff, params)
 
     if player and player.remote then
         return
     end
 
-    if Unit.alive(player_unit) then
+    if Unit.alive(owner_unit) then
         local killed_unit_breed_data = params[2]
 
         if killed_unit_breed_data.elite or killed_unit_breed_data.special then
             local buff_template = buff.template
             local weapon_slot = "slot_ranged"
-            local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+            local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
             local slot_data = inventory_extension:get_slot_data(weapon_slot)
             local right_unit_1p = slot_data.right_unit_1p
             local left_unit_1p = slot_data.left_unit_1p
@@ -916,18 +1020,21 @@ mod:add_proc_function("gs_victor_bounty_hunter_ammo_fraction_gain_out_of_ammo", 
     end
 end)
 
-mod:add_proc_function("gs_victor_bounty_hunter_reload_on_kill", function (player, buff, params)
-    local player_unit = player.player_unit
+mod:hook_origin(GenericAmmoUserExtension, "clip_full", function (self)
+	return self:ammo_count() >= self._ammo_per_clip
+end)
+
+mod:add_proc_function("gs_victor_bounty_hunter_reload_on_kill", function (owner_unit, buff, params)
 
     if player and player.remote then
         return
     end
 
-    if Unit.alive(player_unit) then
+    if Unit.alive(owner_unit) then
         local killing_blow = params[1]
         local damage_source_name = killing_blow[DamageDataIndex.DAMAGE_SOURCE_NAME]
         local weapon_slot = "slot_melee"
-        local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+        local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
         local slot_data = inventory_extension:get_slot_data(weapon_slot)
 
         if not slot_data then
@@ -941,7 +1048,7 @@ mod:add_proc_function("gs_victor_bounty_hunter_reload_on_kill", function (player
         end
 
         local weapon_slot = "slot_ranged"
-        local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+        local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
         local slot_data = inventory_extension:get_slot_data(weapon_slot)
         local right_unit_1p = slot_data.right_unit_1p
         local left_unit_1p = slot_data.left_unit_1p
@@ -999,6 +1106,51 @@ mod:modify_talent("wh_bountyhunter", 5, 3, {
 mod:add_text("rebaltourn_career_passive_name_wh_2d", "Blessed Kill")
 mod:add_text("rebaltourn_career_passive_desc_wh_2d_2", "Melee kills reset the cooldown of Blessed Shots.")
 
+mod:modify_talent("wh_bountyhunter", 6, 1, {
+    buffs = {
+        "victor_bountyhunter_activated_ability_passive_cooldown_reduction",
+        "victor_bountyhunter_heal_on_ult_kill"
+    }
+})
+
+mod:add_talent_buff_template("witch_hunter", "victor_bountyhunter_heal_on_ult_kill", {
+    event = "on_kill",
+    buff_func = "victor_bounty_heal_on_ult_kill_func"
+})
+
+mod:add_proc_function("victor_bounty_heal_on_ult_kill_func", function (owner_unit, buff, params)
+    if not Managers.state.network.is_server then
+        return
+    end
+
+    if not is_local(owner_unit) then
+        return
+    end
+
+	if ALIVE[owner_unit] then
+		local killing_blow = params[1]
+        local damage_source_name = killing_blow[DamageDataIndex.DAMAGE_SOURCE_NAME]
+
+        if damage_source_name ~= "victor_bountyhunter_career_skill_weapon" then
+            return
+        end
+
+        local breed = params[2]
+
+        if breed and breed.bloodlust_health and not breed.is_hero then
+            local heal_amount = (breed.bloodlust_health) or 0
+
+            DamageUtils.heal_network(owner_unit, owner_unit, heal_amount, "heal_from_proc")
+		end
+	end
+end)
+
+mod:modify_talent_buff_template("witch_hunter", "victor_bountyhunter_activated_ability_passive_cooldown_reduction", {
+    multiplier = 0.15
+})
+
+mod:add_text("victor_bountyhunter_activated_ability_reset_cooldown_on_stacks_2_desc", "Killing enemies with Locked and Loaded grants temporary health. Ranged critical hits reduces the cooldown of Locked and Loaded by 15%%. Can only trigger once every 10 seconds.")
+
 --Warrior Priest---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 DamageProfileTemplates.victor_priest_activated_ability_nuke_explosion.default_target.dot_template_name = nil
 DamageProfileTemplates.victor_priest_activated_ability_nuke_explosion.default_target.power_distribution.impact = 1
@@ -1046,6 +1198,18 @@ mod:modify_talent("wh_priest", 2, 3, {
         }
     },
 })
+
+mod:modify_talent_buff_template("witch_hunter", "victor_priest_5_1_buff", {
+    stat_buff = "power_level_melee_cleave",
+    multiplier = 0.2
+})
+mod:modify_talent_buff_template("witch_hunter", "victor_priest_5_2_buff", {
+    stat_buff = "attack_speed",
+    multiplier = 0.05
+})
+mod:add_text("victor_priest_5_1_desc", "Bless the party with 20%% increased Melee Cleave Power.")
+mod:add_text("victor_priest_5_2_desc", "Bless the party with 5%% increased Attack Speed.")
+
 BuffTemplates.victor_priest_activated_ability_invincibility_improved.buffs[1].duration = 5
 BuffTemplates.victor_priest_activated_ability_nuke_improved.buffs[1].duration = 5
 BuffTemplates.victor_priest_activated_noclip_improved.buffs[1].duration = 5
@@ -1090,6 +1254,7 @@ mod:add_text("victor_priest_6_1_desc", "Shield of Faith now lasts 12 seconds")
 mod:modify_talent_buff_template("witch_hunter", "victor_priest_6_3_buff", {
     heal_window = 4
 })
+mod:add_text("victor_priest_6_3_desc", "Shield of Faith revives and heals an amount equal to all Damage suffered last 4 seconds.")
 mod:modify_talent("wh_priest", 6, 1, {
     description_values  = {
         {
@@ -1109,7 +1274,7 @@ mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_1_cooldown", {
 mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_2_cooldown", {
 	max_stacks = 1,
 	refresh_durations = true,
-	icon = "victor_priest_2_2",
+	icon = "victor_priest_2_3",
 	duration = 60,
 	name = "victor_priest_prayer_2_cooldown",
 	is_cooldown = true
@@ -1141,7 +1306,7 @@ mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_1_cooldown_sho
 mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_2_cooldown_short", {
 	max_stacks = 1,
 	refresh_durations = true,
-	icon = "victor_priest_2_2",
+	icon = "victor_priest_2_3",
 	duration = 50,
 	name = "victor_priest_prayer_2_cooldown_short",
 	is_cooldown = true
@@ -1177,7 +1342,7 @@ mod:add_talent_buff_template("witch_hunter", "victor_priest_prayer_attack_speed"
 	max_stacks = 1,
 	refresh_durations = true,
 	multiplier = 0.2,
-	icon = "victor_priest_2_2",
+	icon = "victor_priest_2_3",
 	duration = 15,
 	name = "victor_priest_prayer_attack_speed"
 })
@@ -1195,7 +1360,7 @@ mod:add_talent_buff_template("witch_hunter", "victor_priest_prayer_attack_speed_
 	max_stacks = 1,
 	refresh_durations = true,
 	multiplier = 0.24,
-	icon = "victor_priest_2_2",
+	icon = "victor_priest_2_3",
 	duration = 15,
 	name = "victor_priest_prayer_attack_speed"
 })
@@ -1211,14 +1376,17 @@ mod:add_talent_buff_template("witch_hunter", "gs_priest_prayer_toggle_function",
 mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_1", {
 	max_stacks = 1,
 	icon = "victor_priest_6_1",
+    debuff = true
 })
 mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_2", {
 	max_stacks = 1,
-	icon = "victor_priest_2_2",
+	icon = "victor_priest_2_3",
+    debuff = true
 })
 mod:add_talent_buff_template("witch_hunter","victor_priest_prayer_3", {
 	max_stacks = 1,
 	icon = "victor_priest_4_1",
+    debuff = true
 })
 
 mod:add_buff_function("toggle_prayer_type", function (unit, buff, params)
@@ -1358,14 +1526,6 @@ mod:hook_origin(PassiveAbilityWarriorPriest, "modify_resource", function (self, 
 		local buff_to_add = nil
 		local talent_extension = self._talent_extension
 
-		if is_local_player or is_local_human then
-			local first_person_extension = self._first_person_extension
-
-			first_person_extension:animation_event("bless_target_other")
-			first_person_extension:play_hud_sound_event("career_ability_priest_explosion")
-			first_person_extension:play_remote_unit_sound_event("career_ability_priest_explosion", owner_unit, 0)
-		end
-
 		if not buff_extension:has_buff_type("victor_priest_prayer_1_cooldown") and not buff_extension:has_buff_type("victor_priest_prayer_1_cooldown_short") and buff_extension:has_buff_type("victor_priest_prayer_1") then
 			if talent_extension:has_talent("victor_priest_4_1", "witch_hunter", true) then
 				buff_to_add = "victor_priest_prayer_dr_strong"
@@ -1418,6 +1578,14 @@ mod:hook_origin(PassiveAbilityWarriorPriest, "modify_resource", function (self, 
 			else
 				self._current_resource = 0
 			end
+
+            if is_local_player or is_local_human then
+                local first_person_extension = self._first_person_extension
+
+                first_person_extension:animation_event("bless_target_other")
+                first_person_extension:play_hud_sound_event("career_ability_priest_explosion")
+                first_person_extension:play_remote_unit_sound_event("career_ability_priest_explosion", owner_unit, 0)
+		    end
 		end
 
 		if not buff_extension:has_buff_type("victor_priest_prayer_3_cooldown") and not buff_extension:has_buff_type("victor_priest_prayer_3_cooldown_short") and buff_extension:has_buff_type("victor_priest_prayer_3") then
@@ -1464,6 +1632,14 @@ mod:hook_origin(PassiveAbilityWarriorPriest, "modify_resource", function (self, 
 			else
 				self._current_resource = 0
 			end
+
+            if is_local_player or is_local_human then
+                local first_person_extension = self._first_person_extension
+
+                first_person_extension:animation_event("bless_target_other")
+                first_person_extension:play_hud_sound_event("career_ability_priest_explosion")
+                first_person_extension:play_remote_unit_sound_event("career_ability_priest_explosion", owner_unit, 0)
+		    end
 		end
 	end
 
@@ -1477,8 +1653,7 @@ mod:modify_talent("wh_priest", 4, 3, {
 	buffs = {}
 })
 
-mod:add_proc_function("add_buff_to_hit_enemy", function (player, buff, params, world)
-	local owner_unit = player.player_unit
+mod:add_proc_function("add_buff_to_hit_enemy", function (owner_unit, buff, params, world)
 	local hit_unit = params[1]
 	local attack_type = params[7]
 
@@ -1497,15 +1672,13 @@ mod:add_proc_function("add_buff_to_hit_enemy", function (player, buff, params, w
 	end
 end)
 
-mod:add_proc_function("victor_priest_4_3_heal_on_kill", function (player, buff, params, world)
+mod:add_proc_function("victor_priest_4_3_heal_on_kill", function (owner_unit, buff, params, world)
 	if not Managers.state.network.is_server then
 		return
 	end
 
-	local player_unit = player.player_unit
-
-	if ALIVE[player_unit] then
-		local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+	if ALIVE[owner_unit] then
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 
 		if not buff_extension or not buff_extension:has_buff_type("victor_priest_passive_aftershock") then
 			return
@@ -1521,8 +1694,8 @@ mod:add_proc_function("victor_priest_4_3_heal_on_kill", function (player, buff, 
 
 		if breed and not breed.is_hero then
 			local heal_amount = breed.bloodlust_health or 0
-			local owner_position = POSITION_LOOKUP[player_unit]
-			local side = Managers.state.side.side_by_unit[player_unit]
+			local owner_position = POSITION_LOOKUP[owner_unit]
+			local side = Managers.state.side.side_by_unit[owner_unit]
 
 			if not side then
 				return
@@ -1536,14 +1709,14 @@ mod:add_proc_function("victor_priest_4_3_heal_on_kill", function (player, buff, 
 				local unit = player_and_bot_units[i]
 
 				if ALIVE[unit] then
-					DamageUtils.heal_network(unit, player_unit, heal_amount, "career_passive")
+					DamageUtils.heal_network(unit, owner_unit, heal_amount, "career_passive")
 				end
 			end
 		end
 	end
 end)
 
-mod:add_text("career_passive_desc_wh_priest", "Saltzpyre gains Fury when enemies die nearby. At 100% Fury, he briefly enters Righteous Fury ,his attacks Smite the enemy for 20% of weapon damage and He can use three different Battle Prayers. Battle Prayers deplete Fury and have a cooldown.")
+mod:add_text("career_passive_desc_wh_priest", "Saltzpyre gains Fury when enemies die nearby. At 100% Fury he briefly enters Righteous Fury, his attacks Smite the enemy for 20% of weapon damage and He can use three different Battle Prayers. Battle Prayers can be cycled trough with the Interact hotkey and used with the Reload hotkey. Prayers deplete Fury and have a cooldown of 30 seconds.")
 mod:add_text("career_passive_desc_wh_priest_b", "During Righteous Fury kills restore health to the party based on the health of the slain enemy.")
 mod:add_text("victor_priest_4_1_desc", "Lower cooldown of prayers by 10 seconds")
 mod:add_text("victor_priest_4_2_desc", "Reduce Prayer cost from 100 to 50 Fury")
@@ -1614,11 +1787,376 @@ mod:add_talent_buff_template("witch_hunter", "victor_priest_fury_on_ult", {
 	name = "victor_priest_fury_on_ult",
 })
 
---mod:hook(PassiveAbilityWarriorPriest, "activate_buff", function(func, self, force)
---  if force then func(self) end
---end)
---mod:hook_safe(PassiveAbilityWarriorPriest, "update", function(self)
---  if self._current_resource >= self._max_resource and Keyboard.pressed(Keyboard.button_id("z")) then
---    self:activate_buff(true)
---  end
---end)
+mod:add_proc_function("tag_on_hit_whc", function (owner_unit, buff, params)
+	local target_unit = params[1]
+    local attack_type = params[2]
+
+	if Unit.alive(owner_unit) and Unit.alive(target_unit) and attack_type == "ability" then
+        local network_manager = Managers.state.network
+        local pinger_unit_id = network_manager:unit_game_object_id(owner_unit)
+        local pinged_unit_id = network_manager:unit_game_object_id(target_unit)
+        network_manager.network_transmit:send_rpc_server("rpc_ping_unit", pinger_unit_id, pinged_unit_id, false, PingTypes.PING_ONLY, 1)
+	end
+end)
+
+mod:add_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit_tag", {
+	event = "on_hit",
+	buff_func = "tag_on_hit_whc"
+})
+
+mod:modify_talent("wh_captain", 6, 1, {
+    buffs = {
+        "victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit_tag",
+    }
+})
+
+mod:hook_origin(CareerAbilityWHCaptain, "_run_ability", function (self, new_initial_speed)
+	self:_stop_priming()
+
+	local career_extension = self._career_extension
+
+	career_extension:start_activated_ability_cooldown()
+
+	local world = self._world
+	local owner_unit = self._owner_unit
+	local is_server = self._is_server
+	local local_player = self._local_player
+	local bot_player = self._bot_player
+	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+	local buff_system = Managers.state.entity:system("buff_system")
+	local buff_to_add = "victor_witchhunter_activated_ability_crit_buff"
+	local network_manager = self._network_manager
+	local network_transmit = network_manager.network_transmit
+
+	CharacterStateHelper.play_animation_event(owner_unit, "witch_hunter_active_ability")
+
+	local radius = 10
+	local position = POSITION_LOOKUP[owner_unit]
+
+	if not talent_extension:has_talent("victor_witchhunter_activated_ability_guaranteed_crit_self_buff") then
+		local nearby_player_units = FrameTable.alloc_table()
+		local proximity_extension = Managers.state.entity:system("proximity_system")
+		local broadphase = proximity_extension.player_units_broadphase
+
+		Broadphase.query(broadphase, position, radius, nearby_player_units)
+
+		local side_manager = Managers.state.side
+
+		for _, player_unit in pairs(nearby_player_units) do
+			if Unit.alive(player_unit) and not side_manager:is_enemy(owner_unit, player_unit) then
+				buff_system:add_buff(player_unit, buff_to_add, owner_unit)
+			end
+		end
+	else
+		buff_to_add = "victor_witchhunter_activated_ability_guaranteed_crit_self_buff"
+
+		buff_system:add_buff(owner_unit, buff_to_add, owner_unit)
+	end
+
+	local explosion_template_name = "victor_captain_activated_ability_stagger"
+	local explosion_template = ExplosionTemplates[explosion_template_name]
+
+	if talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff", "witch_hunter", true) then
+		if talent_extension:has_talent("victor_witchhunter_improved_damage_taken_ping", "witch_hunter", true) then
+			explosion_template_name = "victor_captain_activated_ability_stagger_ping_debuff_improved"
+			explosion_template = ExplosionTemplates[explosion_template_name]
+		else
+			explosion_template_name = "victor_captain_activated_ability_stagger_ping_debuff"
+			explosion_template = ExplosionTemplates[explosion_template_name]
+		end
+	end
+
+	local scale = 1
+	local damage_source = "career_ability"
+	local is_husk = false
+	local rotation = Quaternion.identity()
+	local career_power_level = career_extension:get_career_power_level()
+
+	DamageUtils.create_explosion(world, owner_unit, position, rotation, explosion_template, scale, damage_source, is_server, is_husk, owner_unit, career_power_level, false, owner_unit)
+
+	local owner_unit_go_id = network_manager:unit_game_object_id(owner_unit)
+	local explosion_template_id = NetworkLookup.explosion_templates[explosion_template_name]
+	local damage_source_id = NetworkLookup.damage_sources[damage_source]
+
+	if is_server then
+		network_transmit:send_rpc_clients("rpc_create_explosion", owner_unit_go_id, false, position, rotation, explosion_template_id, scale, damage_source_id, career_power_level, false, owner_unit_go_id)
+	else
+		network_transmit:send_rpc_server("rpc_create_explosion", owner_unit_go_id, false, position, rotation, explosion_template_id, scale, damage_source_id, career_power_level, false, owner_unit_go_id)
+	end
+
+	if talent_extension:has_talent("victor_witchhunter_activated_ability_refund_cooldown_on_enemies_hit") then
+		local nearby_enemy_units = FrameTable.alloc_table()
+		local proximity_extension = Managers.state.entity:system("proximity_system")
+		local broadphase = proximity_extension.enemy_broadphase
+
+		Broadphase.query(broadphase, position, radius, nearby_enemy_units)
+
+		local target_number = 1
+		local side_manager = Managers.state.side
+
+		for _, enemy_unit in pairs(nearby_enemy_units) do
+			if Unit.alive(enemy_unit) and side_manager:is_enemy(owner_unit, enemy_unit) then
+				DamageUtils.buff_on_attack(owner_unit, enemy_unit, "ability", false, "torso", target_number, false, "n/a")
+
+				target_number = target_number + 1
+			end
+		end
+	end
+
+    if talent_extension:has_talent("victor_captain_activated_ability_stagger_ping_debuff") then
+		local nearby_enemy_units = FrameTable.alloc_table()
+		local proximity_extension = Managers.state.entity:system("proximity_system")
+		local broadphase = proximity_extension.enemy_broadphase
+
+        radius = 100
+
+		Broadphase.query(broadphase, position, radius, nearby_enemy_units)
+
+		local target_number = 1
+		local side_manager = Managers.state.side
+
+		for _, enemy_unit in pairs(nearby_enemy_units) do
+			if Unit.alive(enemy_unit) and side_manager:is_enemy(owner_unit, enemy_unit) then
+				DamageUtils.buff_on_attack(owner_unit, enemy_unit, "ability", false, "torso", target_number, false, "n/a")
+
+				target_number = target_number + 1
+			end
+		end
+
+        local nearby_player_units = FrameTable.alloc_table()
+        local broadphase_2 = proximity_extension.player_units_broadphase
+
+        Broadphase.query(broadphase_2, position, radius, nearby_player_units)
+
+        for _, player_unit in pairs(nearby_player_units) do
+            if not side_manager:is_enemy(self._owner_unit, player_unit) then
+                local unit_go_id = network_manager:unit_game_object_id(player_unit)
+
+                if unit_go_id then
+                    buff_system:add_buff(owner_unit, "victor_witchhunter_activated_ability_mute_ping", self._owner_unit, false)
+                end
+            end
+        end
+	end
+
+	if (is_server and bot_player) or local_player then
+		local first_person_extension = self._first_person_extension
+
+		first_person_extension:animation_event("ability_shout")
+		first_person_extension:play_hud_sound_event("Play_career_ability_captain_shout_out")
+		first_person_extension:play_remote_unit_sound_event("Play_career_ability_captain_shout_out", owner_unit, 0)
+	end
+
+	self:_play_vo()
+	self:_play_vfx()
+end)
+
+mod:add_talent_buff_template("witch_hunter", "victor_witchhunter_activated_ability_mute_ping", {
+	duration = 5,
+    name = "victor_witchhunter_activated_ability_mute_ping",
+    icon = "victor_priest_4_1"
+})
+
+mod:hook_origin(PingSystem, "_remove_ping", function (self, pinger_unit)
+	if not pinger_unit then
+		return
+	end
+
+    local buff_extension = ScriptUnit.has_extension(pinger_unit, "buff_system")
+
+    if buff_extension and buff_extension:has_buff_type("victor_witchhunter_activated_ability_crit_buff") then
+        return
+    end
+
+	local data = self._pinged_units[pinger_unit]
+	local world_marker = self._world_markers[pinger_unit]
+	local world_marker_id = world_marker and world_marker.id
+	self._pinged_units[pinger_unit] = nil
+	self._world_markers[pinger_unit] = nil
+
+	if not data then
+		return
+	end
+
+	if self.is_server then
+		local party = Managers.party:get_party(data.party_id)
+		local pinger_unit_id = data.pinger_unit_id
+
+		self.network_transmit:send_rpc_party_clients("rpc_remove_ping", party, true, pinger_unit_id)
+	end
+
+	local pinged_unit = data.pinged_unit
+
+	if ALIVE[pinged_unit] then
+		local ping_extension = ScriptUnit.has_extension(pinged_unit, "ping_system")
+
+		if ping_extension and ping_extension.set_pinged and ping_extension:pinged() then
+			local apply_outline = self:_is_outline_enabled(pinged_unit)
+
+			ping_extension:set_pinged(false, nil, pinger_unit, apply_outline)
+		end
+	end
+
+	local sender_player = Managers.player:unit_owner(pinger_unit)
+
+	if sender_player and sender_player.local_player then
+		Managers.state.event:trigger("boss_health_bar_clear_prioritized_unit", "ping")
+	end
+
+	if self._world_markers_enabled and world_marker_id then
+		Managers.state.event:trigger("remove_world_marker", world_marker_id)
+	end
+
+	local child_pings = data.child_pings
+    local career_extension = ScriptUnit.has_extension(pinger_unit, "career_system")
+    local career_name = career_extension and career_extension:career_name()
+
+	if child_pings and not career_name == "wh_bountyhunter" then
+		for i = 1, #child_pings, 1 do
+			local child_pinger_unit = child_pings[i]
+
+			self:_remove_ping(child_pinger_unit)
+		end
+	elseif data.parent_pinger_unit then
+		local world_marker = self._world_markers[data.parent_pinger_unit]
+
+		if world_marker then
+			local widget = world_marker.widget
+			local world_marker_response_index = data.world_marker_response_index
+			local id = WORLD_MARKER_CONTENT_LOOKUP[world_marker_response_index]
+			widget.content[id].show = false
+		end
+	end
+end)
+
+mod:hook_origin(PingSystem, "_handle_ping", function (self, ping_type, social_wheel_event_id, sender_player, pinger_unit, pinged_unit, position, flash, parent_pinger_unit)
+	if self._pinged_units[pinger_unit] then
+		self:_remove_ping(pinger_unit)
+	end
+
+	if pinged_unit and not Unit.alive(pinged_unit) then
+		return
+	end
+
+	if pinged_unit then
+		local buff_ext = ScriptUnit.has_extension(pinged_unit, "buff_system")
+
+		if buff_ext and buff_ext:has_buff_type("mutator_shadow_damage_reduction") then
+			return
+		end
+	end
+
+	if not ping_type or ping_type == PingTypes.CANCEL or ping_type == PingTypes.CHAT_ONLY then
+		return
+	end
+
+	local party = sender_player:get_party()
+
+	if not party then
+		return
+	end
+
+	local world_marker_response_index = nil
+
+	if parent_pinger_unit then
+		local parent_data = self._pinged_units[parent_pinger_unit]
+
+		if parent_data then
+			local child_pings = parent_data.child_pings or {}
+			child_pings[#child_pings + 1] = pinger_unit
+			self._pinged_units[parent_pinger_unit].child_pings = child_pings
+			local profile_index = sender_player:profile_index()
+			local career_index = sender_player:career_index()
+			local career = SPProfiles[profile_index].careers[career_index]
+			local color = Colors.get_color_table_with_alpha(career.display_name, 255)
+			local world_marker = self._world_markers[parent_pinger_unit]
+
+			if world_marker then
+				local widget = world_marker.widget
+				local content = widget.content
+
+				for i = 1, 3 do
+					local id = WORLD_MARKER_CONTENT_LOOKUP[i]
+
+					if not content[id].show then
+						world_marker_response_index = i
+
+						break
+					end
+				end
+
+				local icon_id = WORLD_MARKER_ICON_LOOKUP[world_marker_response_index]
+				local style = widget.style[icon_id]
+				style.color = table.clone(color)
+				style.default_color = widget.style.icon.color
+				local id = WORLD_MARKER_CONTENT_LOOKUP[world_marker_response_index]
+				content[id] = {
+					show = true,
+					timer = 0
+				}
+			end
+		end
+	end
+
+	local t = Managers.time:time("game")
+	local network_manager = Managers.state.network
+	local pinger_unit_id = network_manager:unit_game_object_id(pinger_unit)
+	local pinged_unit_id, is_level_unit = nil
+
+    if pinged_unit then
+		pinged_unit_id, is_level_unit = network_manager:game_object_or_level_id(pinged_unit)
+	end
+
+	self._pinged_units[pinger_unit] = {
+		start_time = t,
+		pinged_unit = pinged_unit,
+		flash = flash,
+		party_id = party.party_id,
+		pinger_unique_id = sender_player:unique_id(),
+		pinger_unit_id = pinger_unit_id,
+		pinged_unit_id = pinged_unit_id,
+		ping_type = ping_type,
+		parent_pinger_unit = parent_pinger_unit,
+		world_marker_response_index = world_marker_response_index,
+		position = position and {
+			Vector3.to_elements(position)
+		},
+		social_wheel_event_id = social_wheel_event_id
+	}
+
+	Managers.telemetry_events:ping_used(sender_player, parent_pinger_unit == nil, table.find(PingTypes, ping_type), pinged_unit, POSITION_LOOKUP[pinger_unit])
+
+	if self.is_server then
+		if pinged_unit then
+			self.network_transmit:send_rpc_party_clients("rpc_ping_unit", party, true, pinger_unit_id, pinged_unit_id, is_level_unit, flash, ping_type, social_wheel_event_id)
+			self:_play_ping_vo(pinger_unit, pinged_unit, ping_type, social_wheel_event_id)
+		elseif position then
+			self.network_transmit:send_rpc_party_clients("rpc_ping_world_position", party, true, pinger_unit_id, position, ping_type, social_wheel_event_id)
+		end
+	end
+
+	if not DEDICATED_SERVER then
+		local local_player = Managers.player:local_player()
+		local unique_player_id = local_player:unique_id()
+
+		if Managers.party:is_player_in_party(unique_player_id, party.party_id) then
+			if pinged_unit then
+				self:_add_unit_ping(pinger_unit, pinged_unit, flash, ping_type)
+			end
+
+			if self._world_markers_enabled then
+				self:_add_world_marker(pinger_unit, pinged_unit, position, ping_type, social_wheel_event_id)
+			end
+
+			local event = (pinged_unit and Unit.get_data(pinged_unit, "breed") and "hud_ping_enemy") or "hud_ping"
+
+            local buff_extension = ScriptUnit.has_extension(pinger_unit, "buff_system")
+
+            if buff_extension and buff_extension:has_buff_type("victor_witchhunter_activated_ability_crit_buff") then
+                return
+            end
+
+			self:_play_sound(event)
+		end
+	end
+end)

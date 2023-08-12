@@ -105,8 +105,7 @@ mod:hook_origin(ActionShieldSlam, "_hit", function (self, world, can_damage, own
 		target_breed_unit = nil
 	end
 
-	local side = Managers.state.side.side_by_unit[owner_unit]
-	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+	local side_manager = Managers.state.side
 	local total_hits = 0
 	local hit_unit_index = 1
 
@@ -114,13 +113,23 @@ mod:hook_origin(ActionShieldSlam, "_hit", function (self, world, can_damage, own
 		repeat
 			local hit_actor = actors[i]
 			local hit_unit = Actor.unit(hit_actor)
+
+			if hit_units[hit_unit] then
+				break
+			end
+
+			hit_units[hit_unit] = true
+			local target_is_friendly = side_manager:is_ally(owner_unit, hit_unit)
+
+			if target_is_friendly then
+				break
+			end
+
 			local breed = unit_get_data(hit_unit, "breed")
 			local dummy = not breed and unit_get_data(hit_unit, "is_dummy")
 			local hit_self = hit_unit == owner_unit
-			local target_is_friendly_player = table.contains(player_and_bot_units, hit_unit)
 
-			if not target_is_friendly_player and (breed or dummy) and not hit_units[hit_unit] then
-				hit_units[hit_unit] = true
+			if breed or dummy then
 				hit_unit_index = total_hits
 				total_hits = total_hits + 1
 
@@ -159,13 +168,15 @@ mod:hook_origin(ActionShieldSlam, "_hit", function (self, world, can_damage, own
 						local is_critical_strike = self._is_critical_strike
 
 						if not dummy then
+							self._overridable_settings = current_action
+
 							ActionSweep._play_character_impact(self, is_server, owner_unit, hit_unit, breed, hit_position, target_hit_zone_name, current_action, damage_profile, target_index, power_level, attack_direction, shield_blocked, self.melee_boost_curve_multiplier, is_critical_strike)
 						end
 
 						weapon_system:send_rpc_attack_hit(damage_source_id, attacker_unit_id, hit_unit_id, hit_zone_id, hit_position, attack_direction, self.damage_profile_aoe_id, "power_level", power_level, "hit_target_index", target_index, "blocking", shield_blocked, "shield_break_procced", false, "boost_curve_multiplier", self.melee_boost_curve_multiplier, "is_critical_strike", self._is_critical_strike, "can_damage", true, "can_stagger", true, "first_hit", self._num_targets_hit == 1)
 					end
 				end
-			elseif not target_is_friendly_player and not hit_units[hit_unit] and not hit_self and ScriptUnit.has_extension(hit_unit, "health_system") then
+			elseif not hit_self and ScriptUnit.has_extension(hit_unit, "health_system") then
 				local hit_unit_id, is_level_unit = Managers.state.network:game_object_or_level_id(hit_unit)
 
 				if is_level_unit then
@@ -242,6 +253,8 @@ mod:hook_origin(ActionShieldSlam, "_hit", function (self, world, can_damage, own
 			local actor_position_hit = actor and Actor.center_of_mass(actor)
 
 			if not dummy and actor_position_hit then
+				self._overridable_settings = current_action
+
 				ActionSweep._play_character_impact(self, is_server, owner_unit, hit_unit, breed, actor_position_hit, hit_zone_name, current_action, damage_profile, target_index, power_level, attack_direction, shield_blocked, self.melee_boost_curve_multiplier, is_critical_strike)
 			end
 
@@ -1084,12 +1097,11 @@ function mod.modify_talent(self, career_name, tier, index, new_talent_data)
 end
 
 -- THP & Stagger Buffs
-mod:add_proc_function("rebaltourn_heal_finesse_damage_on_melee", function (player, buff, params)
+mod:add_proc_function("rebaltourn_heal_finesse_damage_on_melee", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
-
-	local player_unit = player.player_unit
+	
 	local heal_amount_crit = 1.5
 	local heal_amount_hs = 3
 	local has_procced = buff.has_procced
@@ -1105,15 +1117,15 @@ mod:add_proc_function("rebaltourn_heal_finesse_damage_on_melee", function (playe
 		has_procced = false
 	end
 
-	if ALIVE[player_unit] and breed and (attack_type == "light_attack" or attack_type == "heavy_attack") and not has_procced then
+	if ALIVE[owner_unit] and breed and (attack_type == "light_attack" or attack_type == "heavy_attack") and not has_procced then
 		if hit_zone_name == "head" or hit_zone_name == "neck" or hit_zone_name == "weakspot" then
 			buff.has_procced = true
 
-			DamageUtils.heal_network(player_unit, player_unit, heal_amount_hs, "heal_from_proc")
+			DamageUtils.heal_network(owner_unit, owner_unit, heal_amount_hs, "heal_from_proc")
 		end
 
 		if critical_hit then
-			DamageUtils.heal_network(player_unit, player_unit, heal_amount_crit, "heal_from_proc")
+			DamageUtils.heal_network(owner_unit, owner_unit, heal_amount_crit, "heal_from_proc")
 
 			buff.has_procced = true
 		end
@@ -1126,14 +1138,12 @@ mod:add_buff_template("rebaltourn_regrowth", {
 	event = "on_hit",
 	perk = "ninja_healing",
 })
-mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (player, buff, params)
+mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
 
-	local player_unit = player.player_unit
-
-	if ALIVE[player_unit] then
+	if ALIVE[owner_unit] then
 		local hit_unit = params[1]
 		local damage_profile = params[2]
 		local attack_type = damage_profile.charge_value
@@ -1153,7 +1163,7 @@ mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (play
 			heal_amount = 0.6
 		end
 
-        local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+        local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
         local equipment = inventory_extension:equipment()
 		local slot_data = equipment.slots.slot_melee
 
@@ -1169,7 +1179,7 @@ mod:add_proc_function("rebaltourn_heal_stagger_targets_on_melee", function (play
 		end
 
 		if target_index and target_index < 5 and breed and not breed.is_hero and (attack_type == "light_attack" or attack_type == "heavy_attack" or attack_type == "action_push") and not is_corpse then
-			DamageUtils.heal_network(player_unit, player_unit, heal_amount, "heal_from_proc")
+			DamageUtils.heal_network(owner_unit, owner_unit, heal_amount, "heal_from_proc")
 		end
 	end
 end)
@@ -1211,13 +1221,12 @@ mod:add_buff_template("rebaltourn_power_level_unbalance", {
 	stat_buff = "power_level",
 	multiplier = 0.1 -- 0.075
 })
-mod:add_proc_function("rebaltourn_unbalance_debuff_on_stagger", function (player, buff, params)
-	local player_unit = player.player_unit
+mod:add_proc_function("rebaltourn_unbalance_debuff_on_stagger", function (owner_unit, buff, params)
 	local hit_unit = params[1]
 	local is_dummy = Unit.get_data(hit_unit, "is_dummy")
 	local buff_type = params[7]
 
-	if Unit.alive(player_unit) and (is_dummy or Unit.alive(hit_unit)) and buff_type == "MELEE_1H" or buff_type == "MELEE_2H" then
+	if Unit.alive(owner_unit) and (is_dummy or Unit.alive(hit_unit)) and buff_type == "MELEE_1H" or buff_type == "MELEE_2H" then
 		local buff_extension = ScriptUnit.extension(hit_unit, "buff_system")
 
 		if buff_extension then
@@ -1276,11 +1285,11 @@ local talent_first_row = {
 	},
 	{
 		"es_huntsman",
-		"wh_captain",
 		"bw_scholar",
 		"bw_adept",
 	},
 	{
+		"wh_captain",
 		"dr_slayer",
 		"we_shade",
 		"we_maidenguard",
@@ -1507,3 +1516,7 @@ mod:modify_trait("necklace_heal_self_on_heal_other", {
 	buff_name = "conqueror",
 	advanced_description = "conqueror_desc_3",
 })
+
+
+
+

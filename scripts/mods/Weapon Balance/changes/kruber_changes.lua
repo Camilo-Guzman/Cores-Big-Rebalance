@@ -178,39 +178,38 @@ mod:modify_talent("es_mercenary", 2, 3, {
 mod:add_text("markus_mercenary_crit_count_desc", "Every 5 hits grant a guaranteed critical strike.")
 
 --lvl 20
-mod:add_proc_function("gs_gain_markus_mercenary_passive_proc", function (player, buff, params)
+mod:add_proc_function("gs_gain_markus_mercenary_passive_proc", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
-
-	local player_unit = player.player_unit
-	local owner_unit = player_unit
+	
+	local owner_unit = owner_unit
 	local buff_template = buff.template
 	local target_number = params[4]
 	local attack_type = params[2]
 	local buff_to_add = buff_template.buff_to_add
 	local buff_system = Managers.state.entity:system("buff_system")
 	local buff_applied = true
-	local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
+	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
 
-	if Unit.alive(player_unit) and target_number and 1 <= target_number and (attack_type == "light_attack" or attack_type == "heavy_attack") then
+	if Unit.alive(owner_unit) and target_number and 1 <= target_number and (attack_type == "light_attack" or attack_type == "heavy_attack") then
 		if talent_extension:has_talent("markus_mercenary_passive_improved", "empire_soldier", true) then
-			buff_system:add_buff(player_unit, "markus_mercenary_passive_improved", owner_unit, false)
+			buff_system:add_buff(owner_unit, "markus_mercenary_passive_improved", owner_unit, false)
 			if talent_extension:has_talent("markus_mercenary_passive_defence_on_proc", "empire_soldier", true) and buff_applied then
-				buff_system:add_buff(player_unit, "markus_mercenary_passive_defence", owner_unit, false)
+				buff_system:add_buff(owner_unit, "markus_mercenary_passive_defence", owner_unit, false)
 			end
 		end
 	end
 
-	if Unit.alive(player_unit) and target_number and buff_template.targets <= target_number and (attack_type == "light_attack" or attack_type == "heavy_attack") then
+	if Unit.alive(owner_unit) and target_number and buff_template.targets <= target_number and (attack_type == "light_attack" or attack_type == "heavy_attack") then
 		if talent_extension:has_talent("markus_mercenary_passive_improved", "empire_soldier", true) then
 			if target_number >= 1 then
-				buff_system:add_buff(player_unit, "markus_mercenary_passive_improved", owner_unit, false)
+				buff_system:add_buff(owner_unit, "markus_mercenary_passive_improved", owner_unit, false)
 			else
 				buff_applied = false
 			end
 		elseif talent_extension:has_talent("markus_mercenary_passive_group_proc", "empire_soldier", true) then
-			local side = Managers.state.side.side_by_unit[player_unit]
+			local side = Managers.state.side.side_by_unit[owner_unit]
 			local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
 			local num_units = #player_and_bot_units
 
@@ -222,14 +221,14 @@ mod:add_proc_function("gs_gain_markus_mercenary_passive_proc", function (player,
 				end
 			end
 		elseif talent_extension:has_talent("markus_mercenary_passive_power_level_on_proc", "empire_soldier", true) then
-			buff_system:add_buff(player_unit, "markus_mercenary_passive_power_level", owner_unit, false)
-			buff_system:add_buff(player_unit, buff_to_add, owner_unit, false)
+			buff_system:add_buff(owner_unit, "markus_mercenary_passive_power_level", owner_unit, false)
+			buff_system:add_buff(owner_unit, buff_to_add, owner_unit, false)
 		else
-			buff_system:add_buff(player_unit, buff_to_add, owner_unit, false)
+			buff_system:add_buff(owner_unit, buff_to_add, owner_unit, false)
 		end
 
 		if talent_extension:has_talent("markus_mercenary_passive_defence_on_proc", "empire_soldier", true) and buff_applied then
-			buff_system:add_buff(player_unit, "markus_mercenary_passive_defence", owner_unit, false)
+			buff_system:add_buff(owner_unit, "markus_mercenary_passive_defence", owner_unit, false)
 		end
 	end
 end)
@@ -260,12 +259,13 @@ mod:modify_talent("es_mercenary", 4, 1, {
 mod:modify_talent_buff_template("empire_soldier", "markus_mercenary_dodge_range", {
 	perk = buff_perks.infinite_dodge
 })
+
+mod:add_text("markus_mercenary_dodge_range_desc", "Increases dodge range by 20.0%% and grants infinite dodge count.")
 -- Ammo Talent
-mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
+mod:add_proc_function("gs_ammo_on_melee_kills", function(owner_unit, buff, params)
 	local buff_template = buff.template
-	local player_unit = player.player_unit
 	local weapon_slot = "slot_ranged"
-	local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
 	local slot_data = inventory_extension:get_slot_data(weapon_slot)
 	local right_unit_1p = slot_data.right_unit_1p
 	local left_unit_1p = slot_data.left_unit_1p
@@ -275,7 +275,7 @@ mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
 	local ammo_bonus_fraction = buff_template.ammo_bonus_fraction
 	local required_kills = buff_template.required_kills
 
-	if not Unit.alive(player_unit) then
+	if not Unit.alive(owner_unit) then
 		return
 	end
 
@@ -307,6 +307,17 @@ mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
 			ammo_extension:add_ammo_to_reserve(ammo_amount)
 		end
 
+		local local_player = Managers.player:local_player()
+		local local_player_unit = local_player and local_player.player_unit
+		local energy_extension = ScriptUnit.has_extension(local_player_unit, "energy_system")
+
+		if energy_extension then
+			local max_energy = energy_extension:get_max()
+			local energy_amount = ammo_bonus_fraction * max_energy
+
+			energy_extension:add_energy(energy_amount)
+		end
+
 		buff.counter = counter - required_kills
 	end
 
@@ -320,7 +331,7 @@ mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
 
 	local display_buff = buff_template.display_buff
 	local buff_system = Managers.state.entity:system("buff_system")
-	local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 	local num_buff_stacks = buff_extension:num_buff_type(display_buff)
 
 	if not buff.stack_ids then
@@ -333,7 +344,7 @@ mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
 		local difference = distance - num_buff_stacks
 
 		for i = 1, difference, 1 do
-			local buff_id = buff_system:add_buff(player_unit, display_buff, player_unit, true)
+			local buff_id = buff_system:add_buff(owner_unit, display_buff, owner_unit, true)
 			local stack_ids = buff.stack_ids
 			stack_ids[#stack_ids + 1] = buff_id
 		end
@@ -344,7 +355,7 @@ mod:add_proc_function("gs_ammo_on_melee_kills", function(player, buff, params)
 			local stack_ids = buff.stack_ids
 			local buff_id = table.remove(stack_ids, 1)
 
-			buff_system:remove_server_controlled_buff(player_unit, buff_id)
+			buff_system:remove_server_controlled_buff(owner_unit, buff_id)
 		end
 	end
 end)
@@ -356,7 +367,7 @@ mod:modify_talent("es_mercenary", 5, 3, {
 		"gs_merc_ammo_on_melee_kills"
 	}
 })
-mod:add_text("gs_merc_ammo_on_melee_kills_desc", "Receive 5%% ammo for melee kills that would provide 60 kill thp.")
+mod:add_text("gs_merc_ammo_on_melee_kills_desc", "Enemy kills each grant a value (equal to on-kill THP), each time the value exceeds 60, gain 5%% ammo.")
 
 mod:add_talent_buff_template("empire_soldier", "gs_merc_ammo_on_melee_kills", {
     event = "on_kill",
@@ -449,7 +460,7 @@ mod:hook_origin(CareerAbilityESMercenary, "_run_ability", function(self, new_ini
 
 	local heal_type_id = NetworkLookup.heal_types.career_skill
 
-	for _, player_unit in pairs(nearby_player_units) do
+		for _, player_unit in pairs(nearby_player_units) do
 		if not side_manager:is_enemy(self._owner_unit, player_unit) then
 			local unit_go_id = network_manager:unit_game_object_id(player_unit)
 
@@ -461,6 +472,7 @@ mod:hook_origin(CareerAbilityESMercenary, "_run_ability", function(self, new_ini
 				end
 
 				network_transmit:send_rpc_server("rpc_request_heal", unit_go_id, heal_amount, heal_type_id)
+
 			end
 		end
 	end
@@ -563,7 +575,7 @@ mod:hook_origin(CareerAbilityESKnight, "_run_ability", function(self)
 		end
 	end
 
-	status_extension:set_noclip(true)
+	status_extension:set_noclip(true, "skill_knight")
 
 	local hold_duration = 0.03
 	local windup_duration = 0.15
@@ -757,11 +769,111 @@ mod:modify_talent_buff_template("empire_soldier", "markus_knight_damage_taken_al
 	multiplier = -0.033
 })
 
---lvl 20
---Unchanged
-
 --lvl 25
-mod:add_text("markus_knight_free_pushes_on_block_desc", "Blocking an attack removes the stamina cost of pushing for 2 seconds.")
+mod:modify_talent("es_knight", 5, 2, {
+    buffs = {
+		"gs_fk_piston",
+		"gs_fk_piston_power"
+	}
+})
+
+mod:add_text("markus_knight_free_pushes_on_block_desc", "Blocking 5 attacks grants immense Stagger to Kruber's next charged attack.")
+
+mod:add_talent_buff_template("empire_soldier", "gs_fk_piston", {
+    event = "on_block",
+    buff_func = "gs_block_gives_buff",
+    required_blocks = 10,
+	buff_to_add = "markus_knight_piston_powered_ready"
+})
+
+mod:add_talent_buff_template("empire_soldier", "gs_fk_piston_power", {
+    event = "on_hit",
+	buff_func = "markus_knight_piston_power_add",
+	apply_buff_func = "bardin_engineer_piston_power_add_apply",
+	buff_to_add = "bardin_engineer_piston_powered_buff",
+	buff_to_remove = "markus_knight_piston_powered_ready",
+	buffs_to_remove_on_remove = {
+		"markus_knight_piston_powered_ready"
+	}
+})
+
+mod:add_talent_buff_template("empire_soldier", "markus_knight_piston_powered_ready",{
+	max_stacks = 1,
+	icon = "markus_knight_free_pushes_on_block",
+	event = "on_start_action",
+	buff_func = "bardin_engineer_piston_power_sound"
+})
+
+mod:add_proc_function("markus_knight_piston_power_add", function (owner_unit, buff, params)
+
+	if ALIVE[owner_unit] then
+		local attack_type = params[2]
+
+		if attack_type ~= "heavy_attack" then
+			return
+		end
+
+		local template = buff.template
+		local buff_to_add = template.buff_to_add
+		local buff_to_remove = template.buff_to_remove
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+
+		if buff_extension:has_buff_type(buff_to_remove) then
+			local has_buff_to_remove = buff_extension:get_non_stacking_buff(buff_to_remove)
+
+			if has_buff_to_remove then
+				buff_extension:remove_buff(has_buff_to_remove.id)
+			end
+
+			local buff_system = Managers.state.entity:system("buff_system")
+
+			buff_system:add_buff(owner_unit, buff_to_add, owner_unit, false)
+		end
+	end
+end)
+
+local function is_server()
+	return Managers.player.is_server
+end
+
+mod:add_proc_function("gs_block_gives_buff", function(owner_unit, buff, params)
+	
+	if ALIVE[owner_unit] then
+		if not buff.counter then
+			buff.counter = 0
+		end
+
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+		local buff_template = buff.template
+		local buff_name = buff_template.buff_to_add
+
+
+		if buff_extension:has_buff_type(buff_name) then
+			return
+		end
+
+		local counter = buff.counter
+		local required_blocks = buff_template.required_blocks
+		local network_manager = Managers.state.network
+		local network_transmit = network_manager.network_transmit
+		local unit_object_id = network_manager:unit_game_object_id(owner_unit)
+		local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
+
+		if counter >= required_blocks then
+			if is_server() then
+				buff_extension:add_buff(buff_name, {
+					attacker_unit = owner_unit
+				})
+				network_transmit:send_rpc_clients("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, false)
+			else
+				network_transmit:send_rpc_server("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, true)
+			end
+			buff.counter = buff.counter - required_blocks
+		end
+
+		buff.counter = buff.counter + 1
+	end
+end)
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_free_pushes_on_block_buff", {
 	duration = 2
 })
@@ -812,13 +924,64 @@ mod:add_buff_function("markus_knight_movespeed_on_incapacitated_ally", function 
 
 	buff.disabled_allies = disabled_allies
 end)
+
+mod:add_buff_function("markus_knight_cooldown_on_incapacitated_ally", function (owner_unit, buff, params)
+    if not Managers.state.network.is_server then
+        return
+    end
+
+    local side = Managers.state.side.side_by_unit[owner_unit]
+    local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+    local num_units = #player_and_bot_units
+    local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+    local buff_system = Managers.state.entity:system("buff_system")
+    local template = buff.template
+    local buff_to_add = template.buff_to_add
+    local disabled_allies = nil
+
+    for i = 1, num_units, 1 do
+        local unit = player_and_bot_units[i]
+        local status_extension = ScriptUnit.extension(unit, "status_system")
+        local is_disabled = status_extension:is_disabled()
+
+        if is_disabled then
+            disabled_allies = true
+        end
+    end
+
+    if buff_extension:has_buff_type(buff_to_add) then
+        if not disabled_allies then
+            local buff_id = buff.buff_id
+
+            if buff_id then
+                buff_system:remove_server_controlled_buff(owner_unit, buff_id)
+
+                buff.buff_id = nil
+            end
+        end
+    elseif disabled_allies then
+        buff.buff_id = buff_system:add_buff(owner_unit, buff_to_add, owner_unit, true)
+    end
+end)
+
+mod:modify_talent_buff_template("empire_soldier", "markus_knight_movement_speed_on_incapacitated_allies", {
+    buff_to_add = "markus_knight_cooldown_on_incapacitated_allies_buff",
+    update_func = "markus_knight_cooldown_on_incapacitated_ally"
+})
+
+mod:add_talent_buff_template("empire_soldier", "markus_knight_cooldown_on_incapacitated_allies_buff", {
+    multiplier = 10,
+    stat_buff = "cooldown_regen"
+})
+
+mod:add_text("markus_knight_charge_reset_on_incapacitated_allies_desc", "When an ally is incapacitated the cooldown of Valiant Charge is accelerated by 1000%%. ")
+
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_cooldown_buff", {
     duration = 1.5,
     multiplier = 2,
 	icon = "markus_knight_improved_passive_defence_aura"
 })
-mod:add_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite accelerates the cooldown of Battering Ram by 200%% for 1.5 seconds")
-
+mod:add_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elite accelerates the cooldown of Valiant charge by 200%% for 1.5 seconds")
 
 --lvl 30
 mod:add_text("markus_knight_ability_invulnerability_desc", "Valiant Charge grants invulnerability and disabler immunity for 4 seconds.")
@@ -904,13 +1067,12 @@ mod:modify_talent("es_huntsman", 2, 2, {
 mod:add_text("gs_hs_2_2_desc", "Every ranged hit has a 10%% chance to activate Haste. When Haste is active you gain 40%% attack speed and your reloads dont consume ammo for 7 seconds.")
 mod:add_text("gs_hs_2_2_name", "Haste")
 
-mod:add_proc_function("gs_proc_haste", function (player, buff, params)
+mod:add_proc_function("gs_proc_haste", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
 
 	local buff_system = Managers.state.entity:system("buff_system")
-	local player_unit = player.player_unit
 	local hit_unit = params[1]
 	local target_number = params[4]
 	local buff_type = params[5]
@@ -924,10 +1086,10 @@ mod:add_proc_function("gs_proc_haste", function (player, buff, params)
 		has_procced = false
 	end
 
-	if Unit.alive(player_unit) and math.random(1, 100) <= proc_chance and breed and buff_type == "RANGED" and not has_procced then
+	if Unit.alive(owner_unit) and math.random(1, 100) <= proc_chance and breed and buff_type == "RANGED" and not has_procced then
 		buff.has_procced = true
-		buff_system:add_buff(player_unit, "gs_haste_buff", player_unit, false)
-		buff_system:add_buff(player_unit, "no_ammo_consumed", player_unit, false)
+		buff_system:add_buff(owner_unit, "gs_haste_buff", owner_unit, false)
+		buff_system:add_buff(owner_unit, "no_ammo_consumed", owner_unit, false)
 	end
 end)
 
@@ -949,14 +1111,12 @@ mod:add_talent_buff_template("empire_soldier", "no_ammo_consumed", {
 	max_stacks = 1,
 })
 
-mod:add_proc_function("gs_heal_on_ranged_kill", function (player, buff, params)
+mod:add_proc_function("gs_heal_on_ranged_kill", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
 
-	local player_unit = player.player_unit
-
-	if ALIVE[player_unit] then
+	if ALIVE[owner_unit] then
 		local killing_blow_data = params[1]
 
 		if not killing_blow_data then
@@ -971,7 +1131,7 @@ mod:add_proc_function("gs_heal_on_ranged_kill", function (player, buff, params)
 			if breed and breed.bloodlust_health and not breed.is_hero then
 				local heal_amount = (breed.bloodlust_health * 0.25) or 0
 
-				DamageUtils.heal_network(player_unit, player_unit, heal_amount, "heal_from_proc")
+				DamageUtils.heal_network(owner_unit, owner_unit, heal_amount, "heal_from_proc")
 			end
 		end
 	end
@@ -1023,11 +1183,10 @@ mod:modify_talent("es_questingknight", 2, 2, {
 	description = "gs_markus_questing_knight_crit_can_insta_kill_desc",
 	buffer = "both",
 	buffs = {
-		"markus_questing_knight_crit_can_insta_kill",
-		"gs_extra_crit_2_2"
+		"markus_questing_knight_crit_can_insta_kill"
 	},
 })
-mod:add_text("gs_markus_questing_knight_crit_can_insta_kill_desc", "Critical strikes instantly slay enemies if their current health is less than 4 times the amount of damage of the critical strike. Half effect versus Lords and monsters. Crit chance increased by 10%%")
+mod:add_text("gs_markus_questing_knight_crit_can_insta_kill_desc", "Critical strikes instantly slay enemies if their current health is less than 4 times the amount of damage of the critical strike. Half effect versus Lords and monsters.")
 
 mod:modify_talent("es_questingknight", 2, 3, {
     num_ranks = 1,

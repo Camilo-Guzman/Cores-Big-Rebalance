@@ -182,10 +182,9 @@ mod:hook_origin(CareerAbilityBWAdept, "_run_ability", function(self)
 		local first_person_extension = self._first_person_extension
 
 		first_person_extension:animation_event("battle_wizard_active_ability_blink")
+		career_extension:set_state("sienna_activate_adept")
 
 		MOOD_BLACKBOARD.skill_adept = true
-
-		career_extension:set_state("sienna_activate_adept")
 	end
 
     if Managers.state.network:game() then
@@ -356,9 +355,17 @@ mod:add_text("sienna_adept_ability_trail_double_desc", "Fire Walk can be activat
 
 -- Pyro------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 table.insert(PassiveAbilitySettings.bw_1.buffs, "sienna_scholar_overcharge_no_slow")
+table.insert(PassiveAbilitySettings.bw_1.buffs, "sienna_scholar_first_hit")
 table.insert(PassiveAbilitySettings.bw_1.buffs, "kerillian_waywatcher_passive_increased_zoom")
 table.insert(PassiveAbilitySettings.bw_2.buffs, "kerillian_waywatcher_passive_increased_zoom")
 table.insert(PassiveAbilitySettings.bw_3.buffs, "kerillian_waywatcher_passive_increased_zoom")
+
+mod:add_talent_buff_template("bright_wizard", "sienna_scholar_first_hit", {
+	max_stacks = 1,
+	multiplier = 0.25,
+	stat_buff = "first_ranged_hit_damage"
+})
+
 --Burning Head
 mod:hook_origin(ActionCareerBWScholar, "client_owner_start_action", function (self, new_action, t, chain_action_data, power_level, action_init_data)
 	ActionCareerBWScholar.super.client_owner_start_action(self, new_action, t, chain_action_data, power_level, action_init_data)
@@ -471,8 +478,8 @@ DamageProfileTemplates.fire_spear_trueflight.critical_strike.impact_armor_power_
 }
 DamageProfileTemplates.fire_spear_trueflight.default_target.power_distribution_near.attack = 1
 DamageProfileTemplates.fire_spear_trueflight.default_target.power_distribution_far.attack = 1
-DamageProfileTemplates.fire_spear_trueflight.cleave_distribution.attack = 0.5
-DamageProfileTemplates.fire_spear_trueflight.cleave_distribution.impact = 0.5
+DamageProfileTemplates.fire_spear_trueflight.cleave_distribution.attack = 0.375
+DamageProfileTemplates.fire_spear_trueflight.cleave_distribution.impact = 0.375
 DamageProfileTemplates.fire_spear_trueflight.default_target.boost_curve_coefficient_headshot = 0.5
 DamageProfileTemplates.fire_spear_trueflight.default_target.boost_curve_coefficient = 0.5
 Weapons.sienna_scholar_career_skill_weapon.actions.action_career_hold.prioritized_breeds = {
@@ -487,11 +494,10 @@ Weapons.sienna_scholar_career_skill_weapon.actions.action_career_hold.prioritize
 }
 
 -- Pyromancer Talents
-mod:add_proc_function("gs_remove_overcharge_on_melee_kills_func", function(player, buff, params)
-    local player_unit = player.player_unit
+mod:add_proc_function("gs_remove_overcharge_on_melee_kills_func", function(owner_unit, buff, params)
     local buff_template = buff.template
 
-    if not Unit.alive(player_unit) then
+    if not Unit.alive(owner_unit) then
         return
     end
 
@@ -508,7 +514,7 @@ mod:add_proc_function("gs_remove_overcharge_on_melee_kills_func", function(playe
     end
 
     local overcharge_amount = buff_template.bonus
-    local overcharge_extension = ScriptUnit.extension(player_unit, "overcharge_system")
+    local overcharge_extension = ScriptUnit.extension(owner_unit, "overcharge_system")
 
     if overcharge_extension then
         overcharge_extension:remove_charge(overcharge_amount)
@@ -564,6 +570,53 @@ mod:modify_talent("bw_scholar", 2, 2, {
 })
 mod:add_text("gs_remove_overcharge_on_melee_kills_desc", "Remove overcharge on melee kills.")
 
+mod:add_buff_function("gs_activate_scaling_buff_based_on_health_percentage", function(unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	if not Unit.alive(unit) then
+        return
+    end
+
+	local health_extension = ScriptUnit.extension(unit, "health_system")
+	local buff_extension = ScriptUnit.extension(unit, "buff_system")
+	local buff_system = Managers.state.entity:system("buff_system")
+	local template = buff.template
+	local max_health = health_extension:get_max_health()
+	local current_health = health_extension:current_health()
+	local health_percentage = current_health / max_health
+	local stacks_to_add = 0
+	local max_buff_value = template.max_buff_value
+
+	stacks_to_add = health_percentage * max_buff_value
+
+	local buff_to_add = template.buff_to_add
+	local num_buff_stacks = buff_extension:num_buff_type(buff_to_add)
+
+	if not buff.stack_ids then
+		buff.stack_ids = {}
+	end
+
+	if num_buff_stacks < stacks_to_add then
+		local difference = stacks_to_add - num_buff_stacks
+
+		for i = 1, difference, 1 do
+			local buff_id = buff_system:add_buff(unit, buff_to_add, unit, true)
+			local stack_ids = buff.stack_ids
+			stack_ids[#stack_ids + 1] = buff_id
+		end
+	elseif stacks_to_add < num_buff_stacks then
+		local difference = num_buff_stacks - stacks_to_add
+
+		for i = 1, difference, 1 do
+			local stack_ids = buff.stack_ids
+			local buff_id = table.remove(stack_ids, 1)
+
+			buff_system:remove_server_controlled_buff(unit, buff_id)
+		end
+	end
+end)
 mod:add_buff_function("gs_activate_buff_stacks_based_on_certain_health_percentage", function(unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
@@ -613,14 +666,15 @@ mod:add_buff_function("gs_activate_buff_stacks_based_on_certain_health_percentag
 end)
 mod:add_talent_buff_template("bright_wizard", "gs_sienna_scholar_crit_chance_above_health_threshold", {
 	buff_to_add = "sienna_scholar_crit_chance_above_health_threshold_buff",
-	update_func = "gs_activate_buff_stacks_based_on_certain_health_percentage",
-	update_frequency = 0.2
+	update_func = "gs_activate_scaling_buff_based_on_health_percentage",
+	update_frequency = 0.2,
+	max_buff_value = 15
 })
 mod:add_talent_buff_template("bright_wizard", "sienna_scholar_crit_chance_above_health_threshold_buff", {
-	max_stacks = 4,
+	max_stacks = 15,
 	icon = "sienna_scholar_crit_chance_above_health_threshold",
 	stat_buff = "critical_strike_chance",
-	bonus = 0.05
+	bonus = 0.01
 })
 mod:modify_talent("bw_scholar", 2, 3, {
     buffs = {
@@ -648,9 +702,6 @@ mod:modify_talent("bw_scholar", 5, 2, {
 })
 mod:add_text("rebaltourn_traits_ranged_remove_overcharge_on_crit_desc", "Ranged critical hits refund the overcharge cost of the attack.")
 
-mod:modify_talent_buff_template("bright_wizard", "sienna_scholar_crit_chance_above_health_threshold_buff", {
-    bonus = 0.05 -- 0.1
-})
 mod:add_talent_buff_template("bright_wizard", "sienna_scholar_free_vent_damage", {
 	stat_buff = "vent_damage",
 	multiplier = -1
@@ -700,15 +751,29 @@ mod:add_text("rebaltourn_career_passive_desc_bw_1c_2", "No longer slowed from be
 
 --Unchained------------------------------------------------------------------------------------------------------------------------------------------------------------------
 table.insert(PassiveAbilitySettings.bw_3.buffs, "sienna_unchained_health_to_ult")
+PlayerCharacterStateOverchargeExploding.on_exit = function (self, unit, input, dt, context, t, next_state)
+    if not Managers.state.network:game() or not next_state then
+        return
+    end
+
+    CharacterStateHelper.play_animation_event(unit, "cooldown_end")
+    CharacterStateHelper.play_animation_event_first_person(self.first_person_extension, "cooldown_end")
+
+    local career_extension = ScriptUnit.extension(unit, "career_system")
+    local career_name = career_extension:career_name()
+
+    if self.falling and next_state ~= "falling" then
+        ScriptUnit.extension(unit, "whereabouts_system"):set_no_landing()
+    end
+end
 table.insert(PassiveAbilitySettings.bw_3.buffs, "gs_add_overcharge_on_melee_kills")
 mod:add_text("career_passive_desc_bw_3c_2", "Increased melee power on high Overcharge by up to 45%. Melee kills generate overcharge when not on high heat.")
-mod:add_proc_function("gs_add_overcharge_on_melee_kills_func", function(player, buff, params)
-    local player_unit = player.player_unit
+mod:add_proc_function("gs_add_overcharge_on_melee_kills_func", function(owner_unit, buff, params)
     local buff_template = buff.template
-    local overcharge_extension = ScriptUnit.extension(player_unit, "overcharge_system")
+    local overcharge_extension = ScriptUnit.extension(owner_unit, "overcharge_system")
     local overcharge_fraction = overcharge_extension:overcharge_fraction()
 
-    if not Unit.alive(player_unit) then
+    if not Unit.alive(owner_unit) then
         return
     end
 
@@ -774,7 +839,7 @@ mod:add_talent_buff_template("bright_wizard", "gs_burning_enemies_on_headshot_co
     reset_on_max_stacks = true,
     max_stacks = 7,
     on_max_stacks_func = "add_remove_buffs",
-    icon = "bardin_ranger_increased_melee_damage_on_no_ammo",
+    icon = "sienna_unchained_tank_unbalance",
     max_stack_data = {
         buffs_to_add = {
             "gs_burning_enemies_on_headshot_buff"
@@ -783,7 +848,7 @@ mod:add_talent_buff_template("bright_wizard", "gs_burning_enemies_on_headshot_co
 })
 local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 mod:add_talent_buff_template("bright_wizard", "gs_burning_enemies_on_headshot_buff", {
-    icon = "sienna_unchained_activated_ability_power_on_enemies_hit",
+    icon = "sienna_unchained_tank_unbalance",
     duration = 5,
     max_stacks = 1,
 	refresh_durations = true,
@@ -793,6 +858,7 @@ mod:add_talent_buff_template("bright_wizard", "gs_burning_enemies_on_headshot_bu
 mod:modify_talent("bw_unchained", 2, 1, {
     description = "gs_burning_enemies_on_headshot_desc",
     name = "gs_burning_enemies_on_headshot_name",
+	icon = "sienna_unchained_tank_unbalance",
     buffs = {
         "gs_burning_enemies_on_headshot"
     }
@@ -912,7 +978,7 @@ mod:add_buff_template("burning_1W_dot_unchained_push", {
     death_flow_event = "burn_death",
     remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
-    time_between_dot_damages = 0.5,
+    time_between_dot_damages = 0.75,
 	update_start_delay = 0.25,
     damage_type = "burninating",
     damage_profile = "burning_dot",
@@ -993,7 +1059,7 @@ mod:add_text("sienna_unchained_exploding_burning_enemies_desc", "Killing burning
 ExplosionTemplates.sienna_unchained_burning_enemies_explosion.explosion = {
     use_attacker_power_level = true,
     max_damage_radius_min = 0.5,
-    effect_name = "fx/wpnfx_fireball_charged_impact",
+    effect_name = "fx/wpnfx_flaming_flail_hit_01",
     radius_max = 2.5,
     sound_event_name = "fireball_big_hit",
     attacker_power_level_offset = 0.01,
@@ -1069,15 +1135,13 @@ mod:add_talent_buff_template("bright_wizard", "gs_sienna_flaming_weapons_to_alli
 
 table.insert(require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names"), "team_burn")
 
-mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (player, buff, params)
+mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (owner_unit, buff, params)
 	local buff_template = buff.template
-	local player_unit = player.player_unit
-	local owner_unit = player_unit
 	local required_kills = buff_template.required_kills
 	local buff_to_add = buff_template.buff_to_add
 	local buff_system = Managers.state.entity:system("buff_system")
 
-	if not Unit.alive(player_unit) then
+	if not Unit.alive(owner_unit) then
 		return
 	end
 
@@ -1103,7 +1167,7 @@ mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (playe
 	local counter = buff.counter
 
 	if counter >= required_kills then
-		local side = Managers.state.side.side_by_unit[player_unit]
+		local side = Managers.state.side.side_by_unit[owner_unit]
 		local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
 		local num_units = #player_and_bot_units
 
@@ -1127,7 +1191,7 @@ mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (playe
 	end
 
 	local display_buff = buff_template.display_buff
-	local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 	local num_buff_stacks = buff_extension:num_buff_type(display_buff)
 
 	if not buff.stack_ids then
@@ -1140,7 +1204,7 @@ mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (playe
 		local difference = distance - num_buff_stacks
 
 		for i = 1, difference, 1 do
-			local buff_id = buff_system:add_buff(player_unit, display_buff, player_unit, true)
+			local buff_id = buff_system:add_buff(owner_unit, display_buff, owner_unit, true)
 			local stack_ids = buff.stack_ids
 			stack_ids[#stack_ids + 1] = buff_id
 		end
@@ -1151,13 +1215,12 @@ mod:add_proc_function("gs_sienna_add_flaming_weapons_to_allies", function (playe
 			local stack_ids = buff.stack_ids
 			local buff_id = table.remove(stack_ids, 1)
 
-			buff_system:remove_server_controlled_buff(player_unit, buff_id)
+			buff_system:remove_server_controlled_buff(owner_unit, buff_id)
 		end
 	end
 end)
 
-mod:add_proc_function("gs_sienna_increase_max_health_on_burning_enemy_killed", function (player, buff, params)
-	local player_unit = player.player_unit
+mod:add_proc_function("gs_sienna_increase_max_health_on_burning_enemy_killed", function (owner_unit, buff, params)
 	local killing_blow_data = params[1]
 	local killed_unit = params[3]
 	local template = buff.template
@@ -1175,17 +1238,16 @@ mod:add_proc_function("gs_sienna_increase_max_health_on_burning_enemy_killed", f
 			local buff_system = Managers.state.entity:system("buff_system")
 			local buff_to_add = template.buff_to_add
 
-			buff_system:add_buff(player_unit, buff_to_add, player_unit, false)
+			buff_system:add_buff(owner_unit, buff_to_add, owner_unit, false)
 		end
 	end
 end)
 
-mod:add_proc_function("gs_sienna_on_melee_kill_explosion", function (player, buff, params)
+mod:add_proc_function("gs_sienna_on_melee_kill_explosion", function (owner_unit, buff, params)
     if not Managers.state.network.is_server then
         return
     end
-
-    local player_unit = player.player_unit
+	
     local killed_unit = params[3]
     local killing_blow_data = params[1]
 
@@ -1193,7 +1255,7 @@ mod:add_proc_function("gs_sienna_on_melee_kill_explosion", function (player, buf
         return
     end
 
-    if Unit.alive(player_unit) then
+    if Unit.alive(owner_unit) then
         local attack_type = killing_blow_data[DamageDataIndex.ATTACK_TYPE]
 
         if not attack_type or (attack_type ~= "light_attack" and attack_type ~= "heavy_attack") then
@@ -1204,7 +1266,7 @@ mod:add_proc_function("gs_sienna_on_melee_kill_explosion", function (player, buf
         local proc_chance = buff_template.proc_chance
 
         if math.random() <= proc_chance and ai_buff_extension and ai_buff_extension:has_buff_perk("burning") then
-            local career_extension = ScriptUnit.has_extension(player_unit, "career_system")
+            local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
             local area_damage_system = Managers.state.entity:system("area_damage_system")
             local position = POSITION_LOOKUP[killed_unit]
             local damage_source = "buff"
@@ -1214,7 +1276,7 @@ mod:add_proc_function("gs_sienna_on_melee_kill_explosion", function (player, buf
             local scale = 1
             local is_critical_strike = false
 
-            area_damage_system:create_explosion(player_unit, position, rotation, explosion_template, scale, damage_source, career_power_level, is_critical_strike)
+            area_damage_system:create_explosion(owner_unit, position, rotation, explosion_template, scale, damage_source, career_power_level, is_critical_strike)
         end
     end
 end)

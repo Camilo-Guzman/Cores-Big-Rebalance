@@ -257,10 +257,11 @@ mod:modify_talent("dr_ironbreaker", 2, 1, {
 	}
 })
 mod:add_text("bardin_ironbreaker_overcharge_increase_power_lowers_attack_speed_desc", "Drake Fire heat cost reduced by 20%% and Drake Fire attack speed increased by 20%%.")
-mod:add_text("bardin_ironbreaker_party_power_on_blocked_attacks_desc", "Blocking an attack grants Bardin and his allies 2%% melee power for 15 seconds. Stacks 5 times.")
-mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "Periodically generate stacks (up to 3 max) of Rising Anger every 7 seconds while Gromril is active. When Gromril is lost, gain 15.0%% attack speed per stack of Rising Anger for 10 seconds.")
-mod:add_text("bardin_ironbreaker_gromril_stagger_desc", "When Gromril Armour is removed all nearby enemies are knocked back. Increases the cooldown of Gromril to 30 seconds.")
+mod:add_text("bardin_ironbreaker_party_power_on_blocked_attacks_desc", "Blocking an attack grants Bardin and his allies 3%% melee power for 15 seconds. Stacks 5 times.")
+mod:add_text("bardin_ironbreaker_rising_attack_speed_desc", "Periodically generate stacks (up to 5 max) of Rising Anger every 7 seconds while Gromril is active. Each stack gives 3%% attack speed. When Gromril is lost, gain 6.0%% attack speed per stack of Rising Anger for 15 seconds.")
+mod:add_text("bardin_ironbreaker_gromril_stagger_desc", "When Gromril Armour is removed all nearby enemies are knocked back. Increases the cooldown of Gromril to 25 seconds.")
 mod:add_text("bardin_ironbreaker_activated_ability_taunt_range_and_duration_desc", "Increases the radius of Impenetrable's taunt by 50%%.")
+mod:add_text("bardin_ironbreaker_power_on_nearby_allies_desc", "Each nearby ally increases power by 7.5%%.")
 
 
 local function is_local(unit)
@@ -272,16 +273,14 @@ local function is_server()
 	return Managers.player.is_server
 end
 
-mod:add_proc_function("add_gromril_delay", function (player, buff, params)
-	local player_unit = player.player_unit
-
-	if not ALIVE[player_unit] then
+mod:add_proc_function("add_gromril_delay", function (owner_unit, buff, params)
+	if not ALIVE[owner_unit] then
 		return
 	end
 
-	if is_local(player_unit) or is_server() then
+	if is_local(owner_unit) or is_server() then
 		local buff_name = "bardin_ironbreaker_gromril_delay"
-		local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
+		local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
 
 		if talent_extension:has_talent("bardin_ironbreaker_max_gromril_delay", "dwarf_ranger", true) then
 			buff_name = "bardin_ironbreaker_gromril_delay_short"
@@ -291,7 +290,7 @@ mod:add_proc_function("add_gromril_delay", function (player, buff, params)
 			buff_name = "bardin_ironbreaker_gromril_delay_long"
 		end
 
-		local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 
 		buff_extension:add_buff(buff_name)
 	end
@@ -305,53 +304,37 @@ mod:add_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_delay_l
 	is_cooldown = true,
 	icon = "bardin_ironbreaker_gromril_armour",
 	delayed_buff_name = "bardin_ironbreaker_gromril_armour",
-	duration = 30
+	duration = 25
 })
 
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_power_on_nearby_allies", {
-	range = 10 -- 5
+	range = 10,
+	multiplier = 0.075
 })
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_party_power_on_blocked_attacks_buff", {
 	duration = 15, -- 0.10,
 	multiplier = 0.03
 })
-mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_stacking_buff_gromril", {
-	max_sub_buff_stacks = 3,
-	update_frequency = 10
-})
+--mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_stacking_buff_gromril", {
+--	max_sub_buff_stacks = 3,
+--	update_frequency = 10
+--})
+--mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_rising_anger", {
+--	max_stacks = 3
+--})
+--mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_attack_speed", {
+--	presentation_delay = 15,
+--	duration = 15,
+--	multiplier = 0.15
+--})
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_rising_anger", {
-	max_stacks = 3
+	stat_buff = "attack_speed",
+	multiplier = 0.03
 })
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_attack_speed", {
-	presentation_delay = 15,
-	duration = 15,
-	multiplier = 0.15
+	multiplier = 0.06,
+	duration = 15
 })
-mod:add_proc_function("bardin_ironbreaker_gromril_trigger_rising_anger", function (player, buff, params)
-	local player_unit = player.player_unit
-
-	if ALIVE[player_unit] then
-		buff.buff_ids = buff.buff_ids or {}
-		local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
-		local buff_amount = #buff.buff_ids
-
-		for i = 1, buff_amount, 1 do
-			buff_extension:remove_buff(buff.buff_ids[i])
-		end
-
-		table.clear(buff.buff_ids)
-
-		local template = buff.template
-
-		for i = 1, buff_amount, 1 do
-			local buff_on_pop = template.buff_on_pop
-			slot12 = buff_extension:add_buff(buff_on_pop)
-		end
-
-		local t = Managers.time:time("game")
-		buff._next_update_t = t + 0.1
-	end
-end)
 
 mod:modify_talent("dr_ironbreaker", 5, 3, {
 	buffer = "both",
@@ -367,20 +350,19 @@ mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_piston_powered_
 	icon = "bardin_ironbreaker_regen_stamina_on_charged_attacks"
 })
 
---mod:add_proc_function("deus_guard_buff_on_damage", function(player, buff, params)
+--mod:add_proc_function("deus_guard_buff_on_damage", function(owner_unit, buff, params)
 --	if not is_server() then
 --		return
 --	end
 --
---	local player_unit = player.player_unit
 --
---	if ALIVE[player_unit] then
+--	if ALIVE[owner_unit] then
 --		local guardian_unit = buff.attacker_unit
 --		local attacker_unit = params[1]
 --		local damage_dealt = params[2]
 --		local damage_type = params[3]
 --
---		if player_unit ~= guardian_unit and damage_type ~= "life_tap" then
+--		if owner_unit ~= guardian_unit and damage_type ~= "life_tap" then
 --			local buff_extension = ScriptUnit.extension(guardian_unit, "buff_system")
 --			local dr_amount = buff_extension:apply_buffs_to_value(1, "damage_taken")
 --
@@ -391,7 +373,7 @@ mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_piston_powered_
 --			damage_dealt = damage_dealt * dr_amount
 --
 --
---			DamageUtils.add_damage_network(guardian_unit, attacker_unit, damage_dealt, "torso", "life_tap", nil, Vector3(0, 0, 0), "life_tap", nil, player_unit)
+--			DamageUtils.add_damage_network(guardian_unit, attacker_unit, damage_dealt, "torso", "life_tap", nil, Vector3(0, 0, 0), "life_tap", nil, owner_unit)
 --		end
 --	end
 --end)
@@ -421,13 +403,12 @@ mod:modify_talent("dr_ranger", 2,1, {
 	}
 })
 mod:add_text("bardin_ranger_increased_melee_damage_on_no_ammo_desc", "Increase dupe chance of items by 10%%.")
-mod:add_proc_function("gs_attack_speed_on_empty_clip_func", function (player, buff, params)
+mod:add_proc_function("gs_attack_speed_on_empty_clip_func", function (owner_unit, buff, params)
 	local buff_system = Managers.state.entity:system("buff_system")
-	local player_unit = player.player_unit
 	local template = buff.template
 	local buff_to_add = template.buff_to_add
 	local weapon_slot = "slot_ranged"
-	local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
 	local slot_data = inventory_extension:get_slot_data(weapon_slot)
 	local right_unit_1p = slot_data.right_unit_1p
 	local left_unit_1p = slot_data.left_unit_1p
@@ -435,7 +416,7 @@ mod:add_proc_function("gs_attack_speed_on_empty_clip_func", function (player, bu
 	local left_hand_ammo_extension = ScriptUnit.has_extension(left_unit_1p, "ammo_system")
 	local ammo_extension = right_hand_ammo_extension or left_hand_ammo_extension
 	if ammo_extension and ammo_extension:ammo_count() == 0 then
-		buff_system:add_buff(player_unit, buff_to_add, player_unit, false)
+		buff_system:add_buff(owner_unit, buff_to_add, owner_unit, false)
 	end
 end)
 
@@ -462,22 +443,21 @@ mod:add_text("bardin_ranger_attack_speed_desc", "When Bardin empties a clip he g
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ranger_passive", {
 	buff_func = "gs_bardin_ranger_scavenge_proc"
 })
-mod:add_proc_function("gs_bardin_ranger_scavenge_proc", function (player, buff, params)
+mod:add_proc_function("gs_bardin_ranger_scavenge_proc", function (owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
-
-	local player_unit = player.player_unit
+	
 	local offset_position_1 = Vector3(0, 0.25, 0)
 	local offset_position_2 = Vector3(0, -0.25, 0)
 
-	if Unit.alive(player_unit) then
+	if Unit.alive(owner_unit) then
 		local drop_chance = buff.template.drop_chance
-		local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
+		local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
 		local result = math.random(1, 100)
 
 		if result < drop_chance * 100 then
-			local player_pos = POSITION_LOOKUP[player_unit] + Vector3.up() * 0.1
+			local player_pos = POSITION_LOOKUP[owner_unit] + Vector3.up() * 0.1
 			local raycast_down = true
 			local pickup_system = Managers.state.entity:system("pickup_system")
 
@@ -766,50 +746,49 @@ mod:modify_talent("dr_slayer", 2, 3, {
 	}
 })
 mod:add_text("gs_bardin_slayer_crit_chance_desc", "Gain 10%% extra crit chance if under 70%% total health. Gain 50%% extra crit chance if under 30%% total health.")
-mod:add_proc_function("gs_add_bardin_slayer_passive_buff", function(player, buff, params)
+mod:add_proc_function("gs_add_bardin_slayer_passive_buff", function(owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
-
-	local player_unit = player.player_unit
+	
 	local buff_system = Managers.state.entity:system("buff_system")
 
-	if Unit.alive(player_unit) then
+	if Unit.alive(owner_unit) then
 		local buff_name = "bardin_slayer_passive_stacking_damage_buff"
-		local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
-		local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+		local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 
 		if talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) then
 			buff_name = "gs_bardin_slayer_passive_increased_max_stacks"
 		end
-		buff_system:add_buff(player_unit, buff_name, player_unit, false)
+		buff_system:add_buff(owner_unit, buff_name, owner_unit, false)
 
 		if talent_extension:has_talent("bardin_slayer_passive_movement_speed", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) == false then
-			buff_system:add_buff(player_unit, "bardin_slayer_passive_movement_speed", player_unit, false)
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_dodge_range", player_unit, false)
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_dodge_speed", player_unit, false)
+			buff_system:add_buff(owner_unit, "bardin_slayer_passive_movement_speed", owner_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_dodge_range", owner_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_dodge_speed", owner_unit, false)
 		end
 
 		if talent_extension:has_talent("bardin_slayer_passive_movement_speed", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) == false then
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_movement_speed_extra", player_unit, false)
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_dodge_range_extra", player_unit, false)
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_dodge_speed_extra", player_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_movement_speed_extra", owner_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_dodge_range_extra", owner_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_dodge_speed_extra", owner_unit, false)
 		end
 
 		if talent_extension:has_talent("gs_bardin_slayer_passive_stacking_crit_buff", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) == false then
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_stacking_crit_buff", player_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_stacking_crit_buff", owner_unit, false)
 		end
 
 		if talent_extension:has_talent("gs_bardin_slayer_passive_stacking_crit_buff", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) then
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_stacking_crit_buff_extra", player_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_stacking_crit_buff_extra", owner_unit, false)
 		end
 
 		if talent_extension:has_talent("bardin_slayer_passive_cooldown_reduction_on_max_stacks", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) == false then
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_cooldown_reduction", player_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_cooldown_reduction", owner_unit, false)
 		end
 
 		if talent_extension:has_talent("bardin_slayer_passive_cooldown_reduction_on_max_stacks", "dwarf_ranger", true) and talent_extension:has_talent("gs_bardin_slayer_passive_increased_max_stacks", "dwarf_ranger", true) then
-			buff_system:add_buff(player_unit, "gs_bardin_slayer_passive_cooldown_reduction_extra", player_unit, false)
+			buff_system:add_buff(owner_unit, "gs_bardin_slayer_passive_cooldown_reduction_extra", owner_unit, false)
 		end
 	end
 end)
@@ -900,7 +879,7 @@ mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_passive_dodge_spe
 		"speed_modifier"
 	}
 })
-
+mod:add_text("bardin_slayer_passive_movement_speed_desc", "Each stack of Trophy Hunter increases movement speed by 10.0%% and dodge range by 5%%.")
 mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_passive_stacking_crit_buff", {
 	max_stacks = 3,
 	icon = "bardin_slayer_passive_stacking_damage_buff_grants_defence",
@@ -1036,9 +1015,9 @@ mod:hook_origin(CareerAbilityDRSlayer, "_do_common_stuff", function(self)
 		first_person_extension:play_hud_sound_event("Play_career_ability_bardin_slayer_loop")
 
 		if local_player then
-			MOOD_BLACKBOARD.skill_slayer = true
-
 			career_extension:set_state("bardin_activate_slayer")
+
+			MOOD_BLACKBOARD.skill_slayer = true
 		end
 	end
 
@@ -1100,12 +1079,42 @@ mod:add_text("career_passive_name_dr_4a", "Scrap Collector")
 mod:add_text("career_active_desc_dr_4", "Unleash the fearsome firepower of Bardin's custom creation. Shots reduce the Ability Bar. Holding reload with the Steam-Assisted Crank Gun (Mk II) equipped builds Pressure. Each stack of Pressure lasts for 12 seconds and gradually restores the Ability Bar. Stacks up to 5 times.")
 mod:add_text("career_passive_desc_dr_4b", "Increases max Ammo by 50%. Drake Fire weapons generate 30% less overheat.")
 
+mod:modify_talent_buff_template( "dwarf_ranger", "bardin_engineer_pump_buff", {
+	icon = "bardin_engineer_passive",
+	on_max_stacks_func = "add_remove_buffs",
+	stat_buff = "cooldown_regen",
+	on_max_stacks_overflow_func = "add_remove_buffs",
+	max_stacks = 5,
+	duration = 12,
+	refresh_durations = true,
+	remove_buff_func = "remove_1_stack",
+	display_buff = "bardin_engineer_pump_buff",
+	max_stack_data = {
+		buffs_to_add = {
+			"bardin_engineer_pump_exhaustion_buff"
+		},
+		talent_buffs_to_add = {
+			bardin_engineer_power_on_max_pump = {
+				buff_to_add = "bardin_engineer_power_on_max_pump_buff",
+				rpc_sync = true
+			}
+		}
+	}
+})
+
+
+mod:add_buff_function("remove_1_stack", function (unit, buff, params)
+	local buff_template = buff.template
+	local display_buff = buff_template.display_buff
+	local buff_extension = ScriptUnit.extension(unit, "buff_system")
+	local buff_id = buff_extension:add_buff(display_buff)
+	buff_extension:remove_buff(buff_id)
+end)
 
 require("scripts/managers/challenges/pickup_spawn_type")
-mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
-	local player_unit = player.player_unit
-	
-	if not Unit.alive(player_unit) then
+mod:add_proc_function("gs_engineer_passive", function(owner_unit, buff, params)
+
+	if not Unit.alive(owner_unit) then
         return
     end
 
@@ -1133,9 +1142,9 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 	local bomb_counter = buff.bomb_counter
 	local buff_template = buff.template
 	local required_kills = buff_template.required_kills
-	local talent_extension = ScriptUnit.extension(player_unit, "talent_system")
-	local career_extension = ScriptUnit.has_extension(player_unit, "career_system")
-	local inventory_extension = ScriptUnit.extension(player_unit, "inventory_system")
+	local talent_extension = ScriptUnit.extension(owner_unit, "talent_system")
+	local career_extension = ScriptUnit.has_extension(owner_unit, "career_system")
+	local inventory_extension = ScriptUnit.extension(owner_unit, "inventory_system")
 	local multiplier = 0.3
 	local ammo_bonus_fraction = 0.10
 	local network_transmit = Managers.state.network.network_transmit
@@ -1145,9 +1154,9 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 		if talent_extension:has_talent("bardin_engineer_power_on_max_pump", "dwarf_ranger", true) then
 			ammo_bonus_fraction = 0.2
 		elseif talent_extension:has_talent("bardin_engineer_stacks_stay", "dwarf_ranger", true) then
-			multiplier = 0.6
+			multiplier = 1
 		elseif talent_extension:has_talent("bardin_engineer_pump_buff_long", "dwarf_ranger", true) then
-			if bomb_counter >= 1 and Managers.state.network.is_server then
+			if bomb_counter >= 2 and Managers.state.network.is_server then
 				local options = { "frag_grenade_t2", "fire_grenade_t2" }
 				local pickup_name = options [ math.random( #options) ]
 				local pickup_settings = AllPickups[pickup_name]
@@ -1156,22 +1165,21 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 				local slot_data = inventory_extension:get_slot_data(slot_name)
 
 				if slot_data then
-					local position = POSITION_LOOKUP[player_unit] + Vector3.up() * 0.1
+					local position = POSITION_LOOKUP[owner_unit] + Vector3.up() * 0.1
 
 					pickup_system:buff_spawn_pickup(pickup_name, position, true)
 				else
-					local go_id = Managers.state.unit_storage:go_id(player_unit)
-					local peer_id = CHANNEL_TO_PEER_ID[channel_id]
+					local go_id = Managers.state.unit_storage:go_id(owner_unit)
 					local slot_id = NetworkLookup.equipment_slots[slot_name]
 					local item_id = NetworkLookup.item_names[item_name]
 					local weapon_skin_id = NetworkLookup.weapon_skins["n/a"]
-					local player_1 = Managers.player:owner(player_unit)
+					local player_1 = Managers.player:owner(owner_unit)
 					local is_remote = player_1 and player_1.remote
 
 					if is_remote then
 						network_transmit:send_rpc("rpc_add_inventory_slot_item", player_1.peer_id, go_id, slot_id, item_id, weapon_skin_id)
 					else
-						network_transmit:queue_local_rpc("rpc_add_inventory_slot_item", peer_id, go_id, slot_id, item_id, weapon_skin_id)
+						network_transmit:queue_local_rpc("rpc_add_inventory_slot_item", go_id, slot_id, item_id, weapon_skin_id)
 					end
 				end
 				buff.bomb_counter = 0
@@ -1194,7 +1202,7 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 			ammo_extension:add_ammo_to_reserve(ammo_amount)
 		end
 
-		local overcharge_extension = ScriptUnit.extension(player_unit, "overcharge_system")
+		local overcharge_extension = ScriptUnit.extension(owner_unit, "overcharge_system")
 
 		if overcharge_extension then
 			local max_overcharge = overcharge_extension:get_max_value()
@@ -1219,7 +1227,7 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 
 	local display_buff = buff_template.display_buff
 	local buff_system = Managers.state.entity:system("buff_system")
-	local buff_extension = ScriptUnit.extension(player_unit, "buff_system")
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 	local num_buff_stacks = buff_extension:num_buff_type(display_buff)
 
 	if not buff.stack_ids then
@@ -1232,7 +1240,7 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 		local difference = distance - num_buff_stacks
 
 		for i = 1, difference, 1 do
-			local buff_id = buff_system:add_buff(player_unit, display_buff, player_unit, true)
+			local buff_id = buff_system:add_buff(owner_unit, display_buff, owner_unit, true)
 			local stack_ids = buff.stack_ids
 			stack_ids[#stack_ids + 1] = buff_id
 		end
@@ -1243,7 +1251,7 @@ mod:add_proc_function("gs_engineer_passive", function(player, buff, params)
 			local stack_ids = buff.stack_ids
 			local buff_id = table.remove(stack_ids, 1)
 
-			buff_system:remove_server_controlled_buff(player_unit, buff_id)
+			buff_system:remove_server_controlled_buff(owner_unit, buff_id)
 		end
 	end
 end)
@@ -1271,7 +1279,8 @@ table.insert(PassiveAbilitySettings.dr_4.buffs, "gs_bardin_engineer_decreased_he
 
 CareerSettings.dr_engineer.attributes.max_hp = 125
 CareerSettings.dr_engineer.attributes.base_critical_strike_chance = 0.1
-mod:add_proc_function("gs_engineer_heavy_explosion", function(player, buff, params)
+
+mod:add_proc_function("gs_engineer_heavy_explosion", function(owner_unit, buff, params)
 	if not Managers.state.network.is_server then
 		return
 	end
@@ -1281,13 +1290,12 @@ mod:add_proc_function("gs_engineer_heavy_explosion", function(player, buff, para
 	if attack_type ~= "heavy_attack" then
 		return
 	end
-
-	local player_unit = player.player_unit
+	
 	local hit_num = params[4]
 
-	if ALIVE[player_unit] and hit_num <= 1 then
+	if ALIVE[owner_unit] and hit_num <= 1 then
 		local area_damage_system = Managers.state.entity:system("area_damage_system")
-		local career_extension = ScriptUnit.extension(player_unit, "career_system")
+		local career_extension = ScriptUnit.extension(owner_unit, "career_system")
 		local power_level = career_extension:get_career_power_level()
 		local hit_unit = params[1]
 		local position = POSITION_LOOKUP[hit_unit]
@@ -1300,11 +1308,15 @@ mod:add_proc_function("gs_engineer_heavy_explosion", function(player, buff, para
 
 		local world_manager = Managers.world
 		local world = world_manager:world("level_world")
-		local wwise_world = world_manager:wwise_world(world)
 
-		WwiseWorld.trigger_event(wwise_world, "talent_power_swing")
+		local first_person_extension = ScriptUnit.has_extension(owner_unit, "first_person_system")
 
-		area_damage_system:create_explosion(player_unit, position, rotation, explosion_template, scale, damage_source, power_level, is_critical_strike)
+		if first_person_extension then
+			first_person_extension:play_hud_sound_event("Play_career_ability_unchained_fire")
+			first_person_extension:play_remote_unit_sound_event("Play_career_ability_unchained_fire", owner_unit, 0)
+		end
+
+		area_damage_system:create_explosion(owner_unit, position, rotation, explosion_template, scale, damage_source, power_level, is_critical_strike)
 	end
 end)
 
@@ -1314,8 +1326,8 @@ mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_engineer_passive_heavy_e
 })
 mod:add_text("bardin_engineer_power_on_max_pump_desc", "Increases ammo gain from Scrap Collector to 20%% and increases overcharge removal to 60%% of max overcharge.")
 mod:add_text("bardin_engineer_power_on_max_pump", "Superior Scrap")
-mod:add_text("bardin_engineer_stacks_stay_desc", "Increase Ult gain from Scrap Collector to 60%%.")
-mod:add_text("bardin_engineer_pump_buff_long_desc", "Scrap Collector also gives a bomb every 2 procs.")
+mod:add_text("bardin_engineer_stacks_stay_desc", "Increase Ult gain from Scrap Collector to 100%%.")
+mod:add_text("bardin_engineer_pump_buff_long_desc", "Scrap Collector also gives a bomb every 3 procs.")
 mod:add_text("bardin_engineer_pump_buff_long", "Bombardier")
 mod:modify_talent("dr_engineer", 4, 1, {
 	icon = "bardin_engineer_fast_ability_charge",
@@ -1366,7 +1378,8 @@ mod:add_talent_buff_template("dwarf_ranger","melee_power_buff", {
 	stat_buff = "power_level_melee",
 	duration = 10,
 	max_stacks = 4,
-	multiplier = 0.05
+	multiplier = 0.05,
+	icon = "bardin_engineer_no_overheat_explosion"
 })
 mod:add_text("bardin_engineer_piston_powered_desc", "Killing an elite enemy grants 5%% melee power for 10 seconds. Max stacks 4.")
 mod:modify_talent("dr_engineer", 6, 2, {
@@ -1381,12 +1394,6 @@ mod:add_talent_buff_template("dwarf_ranger","bardin_engineer_attack_speed_per_co
 	icon = "bardin_engineer_reduced_ability_fire_slowdown"
 })
 mod:add_text("bardin_engineer_reduced_ability_fire_slowdown_desc", "Gain up to 20%% Attack Speed based on your missing Ability bar.")
-
-mod:modify_talent_buff_template("dwarf_ranger","bardin_engineer_attack_speed_per_cooldown", {
-	remove_buff_func = nil,
-	apply_buff_func = nil,
-	multiplier = nil
-})
 
 Weapons.bardin_engineer_career_skill_weapon_special.actions.action_one.base_fire.ammo_usage = 1.25
 
@@ -1418,6 +1425,14 @@ mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_pump_buff", {
 		}
 	}
 })
+
+mod:modify_talent_buff_template("dwarf_ranger","bardin_engineer_increased_ability_bar", {
+	remove_buff_func = nil,
+	apply_buff_func = nil,
+	multiplier = nil
+})
+
+mod:add_text("bardin_engineer_increased_ability_bar_desc", "Killing a Special makes the Steam-Assisted Crank Gun (Mk II) not consume the Ability Bar for the next 4 seconds.")
 
 mod:hook_origin(ActionCareerDREngineerCharge, "init", function (self, world, item_name, is_server, owner_unit, damage_unit, first_person_unit, weapon_unit, weapon_system)
 	ActionCareerDREngineerCharge.super.init(self, world, item_name, is_server, owner_unit, damage_unit, first_person_unit, weapon_unit, weapon_system)
