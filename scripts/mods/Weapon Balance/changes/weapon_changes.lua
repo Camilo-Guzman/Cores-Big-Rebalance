@@ -35,6 +35,10 @@ Weapons.one_handed_hammer_priest_template.actions.action_one.light_attack_04.ani
 DamageProfileTemplates.medium_blunt_smiter_1h.armor_modifier.attack = { 1, 0.8, 2.5, 0.75, 1 } -- { 1, 0.8, 1.75, 0.75, 0.8 }
 Weapons.one_handed_hammer_template_1.actions.action_one.heavy_attack_left.damage_profile = "gs_1h_heavy"
 Weapons.one_handed_hammer_template_1.actions.action_one.heavy_attack_right.damage_profile = "gs_1h_heavy"
+Weapons.one_handed_hammer_template_2.actions.action_one.heavy_attack_left.damage_profile = "gs_1h_heavy"
+Weapons.one_handed_hammer_template_2.actions.action_one.heavy_attack_right.damage_profile = "gs_1h_heavy"
+Weapons.one_handed_hammer_priest_template.actions.action_one.heavy_attack_01.damage_profile = "gs_1h_heavy"
+Weapons.one_handed_hammer_priest_template.actions.action_one.heavy_attack_02.damage_profile = "gs_1h_heavy"
 Weapons.one_handed_hammer_template_1.actions.action_one.heavy_attack_left.range_mod = 1.2 --0
 Weapons.one_handed_hammer_template_1.actions.action_one.heavy_attack_right.range_mod = 1.2 --0
 Weapons.one_handed_hammer_template_2.actions.action_one.heavy_attack_left.range_mod = 1.2 --0
@@ -49,7 +53,8 @@ NewDamageProfileTemplates.gs_1h_heavy = {
 			0.8,
 			2.5,
 			1,
-			0.75
+			0.75,
+			1
 		},
 		impact = {
 			1,
@@ -64,6 +69,7 @@ NewDamageProfileTemplates.gs_1h_heavy = {
 			1,
 			0.8,
 			2.5,
+			1,
 			1,
 			1
 		},
@@ -1033,6 +1039,7 @@ Weapons.one_handed_hammer_book_priest_template.actions.action_one.light_attack_0
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.light_attack_01_pose.anim_time_scale = 1.05
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.light_attack_02.anim_time_scale = 1.05
 --Heavy
+Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left.damage_profile = "gs_1h_heavy"
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left_charged.range_mod = 1.2 --1
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left_charged.width_mod = 35 --25
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_stab_charged.lunge_settings.duration = 0.64
