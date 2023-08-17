@@ -20,7 +20,7 @@ DamageProfileTemplates.light_blunt_tank_diag.targets[2].boost_curve_coefficient_
 DamageProfileTemplates.light_blunt_tank_diag.targets[1].power_distribution.attack = 0.225
 DamageProfileTemplates.light_blunt_tank_diag.targets[2].power_distribution.attack = 0.15 --0.075
 DamageProfileTemplates.light_blunt_tank_diag.armor_modifier.attack = { 1, 0.5, 1, 1, 0.75, 0.25 } --{ 1, 0, 1, 1, 0 }
-DamageProfileTemplates.light_blunt_tank_diag.critical_strike.attack_armor_power_modifer = {	1, 0.6, 1, 0.75, 0.35 } --{ 1, 0.5, 1, 1, 0.25 }
+DamageProfileTemplates.light_blunt_tank_diag.critical_strike.attack_armor_power_modifer = {	1, 0.6, 1, 1, 0.75 } --{ 1, 0.5, 1, 1, 0.25 }
 
 --light 3, 4  (Also affects hammer and shield bop and light 3, hammer and tome lights, dual hammers bop 2, (flaming) flail light 3,4 and sienna mace light 1,2)
 --DamageProfileTemplates changes also affect 1h axe lights
@@ -47,7 +47,7 @@ NewDamageProfileTemplates.gs_1h_heavy = {
 		attack = {
 			1,
 			0.8,
-			1.75,
+			2.5,
 			1,
 			0.75
 		},
@@ -84,9 +84,10 @@ NewDamageProfileTemplates.gs_1h_heavy = {
 	default_target = {
 		boost_curve_type = "smiter_curve",
 		boost_curve_coefficient = 2,
+		boost_curve_coefficient_headshot = 1.5,
 		attack_template = "slashing_smiter",
 		power_distribution = {
-			attack = 0.4,
+			attack = 0.45,
 			impact = 0.25
 		}
 	},
@@ -440,6 +441,7 @@ NewDamageProfileTemplates.gs_heavy_slashing_smiter = {
 	},
 	shield_break = true
 }
+Weapons.bastard_sword_template.actions.action_one.light_attack_left.allowed_chain_actions[1].start_time = 0.5
 Weapons.bastard_sword_template.actions.action_one.heavy_attack_down.damage_profile = "gs_heavy_slashing_smiter"
 AttackTemplates.heavy_slashing_smiter.headshot_sound = "executioner_sword_critical"
 DamageProfileTemplates.heavy_slashing_axe_linesman.armor_modifier.attack[2] = 0.5
@@ -789,6 +791,8 @@ Weapons.one_hand_axe_template_2.actions.action_one.light_attack_last.anim_time_s
 DamageProfileTemplates.light_slashing_smiter.default_target.boost_curve_coefficient_headshot = 2 --1.5
 DamageProfileTemplates.light_slashing_smiter_flat.default_target.boost_curve_coefficient_headshot = 2 --1.5
 DamageProfileTemplates.light_slashing_smiter_diag.default_target.boost_curve_coefficient_headshot = 2 --1.5
+DamageProfileTemplates.light_slashing_smiter.armor_modifier[3] = 2
+
 --Heavy
 Weapons.one_hand_axe_template_1.actions.action_one.heavy_attack_left.range_mod = 1.2 --1
 Weapons.one_hand_axe_template_1.actions.action_one.heavy_attack_right.range_mod = 1.2 --1
@@ -1272,15 +1276,16 @@ Weapons.two_handed_swords_wood_elf_template.actions.action_one.light_attack_bopp
 Weapons.two_handed_swords_wood_elf_template.actions.action_one.light_attack_right_upward.anim_time_scale = 1.25
 Weapons.two_handed_swords_wood_elf_template.actions.action_one.light_attack_left_upward.anim_time_scale = 1.25
 Weapons.two_handed_swords_wood_elf_template.actions.action_one.heavy_attack_down_first.anim_time_scale = 1.6
-Weapons.two_handed_swords_wood_elf_template.actions.action_one.heavy_attack_down_second.anim_time_scale = 1.6
+Weapons.two_handed_swords_wood_elf_template.actions.action_one.heavy_attack_down_second.anim_time_scale = 1.1
 Weapons.two_handed_swords_wood_elf_template.actions.action_one.heavy_attack_down_first.buff_data[1].external_multiplier = 1.5
 Weapons.two_handed_swords_wood_elf_template.actions.action_one.heavy_attack_down_first.buff_data[2].external_multiplier = 0.5
 DamageProfileTemplates.heavy_slashing_smiter_stab.targets[1].boost_curve_coefficient_headshot = 2
-DamageProfileTemplates.heavy_slashing_smiter_stab.targets[1].armor_modifier.attack = { 1, 0.9, 2.5, 1, 0.75 }
-DamageProfileTemplates.heavy_slashing_smiter_stab.critical_strike.attack_armor_power_modifer = { 1, 0.9, 3, 1, 1 }
+DamageProfileTemplates.heavy_slashing_smiter_stab.targets[1].armor_modifier.attack = { 1, 0.6, 2.5, 1, 0.75 }
+DamageProfileTemplates.heavy_slashing_smiter_stab.critical_strike.attack_armor_power_modifer = { 1, 0.6, 3, 1, 1 }
 DamageProfileTemplates.heavy_slashing_linesman_executioner.targets[1].power_distribution.attack = 0.325
 DamageProfileTemplates.heavy_slashing_linesman_executioner.targets[2].power_distribution.attack = 0.25
 DamageProfileTemplates.heavy_slashing_linesman_executioner.targets[3].power_distribution.attack = 0.15
+
 
 --Dual Swords
 Weapons.dual_wield_swords_template_1.actions.action_one.heavy_attack.anim_time_scale = 1
@@ -2257,6 +2262,7 @@ end
 
 PlayerUnitStatusSettings.overcharge_values.beam_staff_shotgun = 5
 Weapons.staff_blast_beam_template_1.actions.action_two.charged_beam.spread_template_override = "spear"
+Weapons.staff_blast_beam_template_1.actions.action_two.charged_beam.damage_window_start = 0.01
 Weapons.staff_blast_beam_template_1.actions.action_one.shoot_charged.damage_profile = "beam_blast"
 NewDamageProfileTemplates.beam_blast = {
 	charge_value = "projectile",
@@ -2308,7 +2314,7 @@ NewDamageProfileTemplates.beam_blast = {
 		boost_curve_coefficient = 0.5,
 		attack_template = "flame_blast",
 		power_distribution_near = {
-			attack = 0.12,
+			attack = 0.1,
 			impact = 0.275
 		},
 		power_distribution_far = {
