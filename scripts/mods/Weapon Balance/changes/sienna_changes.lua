@@ -1302,11 +1302,66 @@ mod:add_talent_buff_template("bright_wizard", "sienna_unchained_thorn_skin", {
 	explosion_template = "thorn_skin",
 	buff_func = "thorn_skin_effect"
 })
-mod:modify_talent("bw_unchained", 5, 3, {
-    description = "gs_increased_overcharge_desc",
+mod:modify_talent("bw_unchained", 4, 3, {
+    description = "sienna_unchained_reduced_overcharge_desc",
+	name = "sienna_unchained_reduced_overcharge",
+	num_ranks = 1,
+	icon = "sienna_unchained_reduced_overcharge",
+	description_values = {
+		{
+			value_type = "percent",
+			value = -0.1
+		}
+	},
 	buffs = {
-		"sienna_unchained_thorn_skin"
+		"sienna_unchained_reduced_overcharge_decay",
+		"sienna_unchained_increased_ult_cooldown"
 	}
+})
+mod:add_text("sienna_unchained_reduced_overcharge_desc", "Reduces overcharge decay by 50%% and increases cooldown regen on high Overcharge by up to 50%%.")
+
+mod:add_talent_buff_template("bright_wizard", "sienna_unchained_reduced_overcharge_decay", {
+    stat_buff = "overcharge_regen",
+	max_stacks = 1,
+	multiplier = -0.5
+})
+mod:add_talent_buff_template("bright_wizard", "sienna_unchained_increased_ult_cooldown",{
+	buff_to_add = "sienna_unchained_ult_cooldown_on_overcharge",
+	update_func = "activate_server_buff_stacks_based_on_overcharge_chunks",
+	chunk_size = 6
+})
+mod:add_talent_buff_template("bright_wizard", "sienna_unchained_ult_cooldown_on_overcharge",{
+	stat_buff = "cooldown_regen",
+	icon = "sienna_unchained_reduced_overcharge",
+	max_stacks = 5,
+	multiplier = 0.1
+})
+mod:modify_talent("bw_unchained", 5, 3, {
+    description = "sienna_unchained_reduced_damage_taken_after_venting_desc_2",
+	name = "sienna_unchained_reduced_damage_taken_after_venting_2",
+	num_ranks = 1,
+	icon = "sienna_unchained_reduced_damage_taken_after_venting",
+	description_values = {
+		{
+			value_type = "percent",
+			value = -0.1
+		}
+	},
+	buffs = {
+		"sienna_unchained_reduced_overcharge",
+		"sienna_unchained_increased_health"
+	}
+})
+mod:add_text("sienna_unchained_reduced_damage_taken_after_venting_desc_2", "Increases Sienna's health by 50%% but reduces the damage taken transferred by Blood Magic to 25%%.")
+mod:add_talent_buff_template("bright_wizard", "sienna_unchained_reduced_overcharge", {
+	stat_buff = "damage_taken_to_overcharge",
+	multiplier = 0.25,
+	max_stacks = 1
+})
+mod:add_talent_buff_template("bright_wizard", "sienna_unchained_increased_health", {
+	stat_buff = "max_health",
+	multiplier = 0.5,
+	max_stacks = 1
 })
 
 mod:add_text("gs_increased_overcharge_desc", "Taking damage deals damage to nearby enemies.")

@@ -1389,8 +1389,8 @@ table.insert(PassiveAbilitySettings.we_thornsister.buffs, "thorn_sister_vent_ner
 --table.insert(PassiveAbilitySettings.we_thornsister.buffs, "thorn_sister_lifted_check")
 ActivatedAbilitySettings.we_thornsister[1].cooldown = 50
 mod:add_talent_buff_template("wood_elf", "thorn_sister_vent_nerf", {
-    stat_buff = "vent_speed",
-    multiplier = -0.33
+    stat_buff = "vent_damage",
+    multiplier = 0.33
 })
 mod:add_text("career_passive_desc_we_thornsister_a_2", "Melee attacks apply a Poison that deals damage and increasing damage suffered by 15% for 10 seconds.")
 
@@ -1421,8 +1421,8 @@ mod:add_proc_function("thorn_sister_share_temp_health_at_full", function (owner_
         if current_health == 1 then
             local heal_amount = params[2]
 
-            if heal_amount > 15 then
-                heal_amount = 15
+            if heal_amount > 12.5 then
+                heal_amount = 12.5
             end
 
             heal_amount = heal_amount / 3

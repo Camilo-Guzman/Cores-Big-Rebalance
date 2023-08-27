@@ -176,20 +176,23 @@ DamageProfileTemplates.heavy_slashing_tank.targets[1].power_distribution.attack 
 DamageProfileTemplates.heavy_slashing_tank.targets[2].power_distribution.attack = 0.3 --0.15
 DamageProfileTemplates.heavy_slashing_tank.targets[3].power_distribution.attack = 0.2 --0.075
 
--- light 1,2,4
+-- light 1,3,4
 DamageProfileTemplates.medium_spear_smiter_stab.default_target.boost_curve_coefficient_headshot = 2 --1.5
--- light 3
-Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_right.hit_mass_count = LINESMAN_HIT_MASS_COUNT
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_stab_1 .anim_time_scale = 0.75
+-- light 2
+Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_right.hit_mass_count = LINESMAN_HIT_MASS_COUNT
 Weapons.two_handed_heavy_spears_template.actions.action_one.light_attack_right.anim_time_scale = 1.05
 Weapons.two_handed_heavy_spears_template.actions.action_one.default_left.allowed_chain_actions[2].sub_action = "heavy_attack_left"
 Weapons.two_handed_heavy_spears_template.actions.action_one.default_left.allowed_chain_actions[6].sub_action = "heavy_attack_left"
 Weapons.two_handed_heavy_spears_template.actions.action_one.default_left.allowed_chain_actions[6].auto_chain = nil
 Weapons.two_handed_heavy_spears_template.actions.action_one.default_left.anim_event = "attack_swing_charge_stab"
 
+-- 2h sword
 --bop
 Weapons.two_handed_swords_template_1.actions.action_one.light_attack_bopp.anim_time_scale = 1.35
 --Heavies
+Weapons.two_handed_swords_template_1.actions.action_one.heavy_attack_left.damage_profile = "tb_two_handed_sword_heavy"
+Weapons.two_handed_swords_template_1.actions.action_one.heavy_attack_right.damage_profile = "tb_two_handed_sword_heavy"
 NewDamageProfileTemplates.tb_two_handed_sword_heavy = {
 	armor_modifier = {
 		attack = {
@@ -258,7 +261,7 @@ NewDamageProfileTemplates.tb_two_handed_sword_heavy = {
 			},
 			armor_modifier = {
 				attack = { 1, 0.2, 2, 1, 0.5 },
-				impact = { 1, 0.5, 0.5, 1, 1}
+				impact = { 1, 0.5, 0.5, 1, 1 }
 			}
 		},
 		{
@@ -454,23 +457,7 @@ DamageProfileTemplates.heavy_slashing_axe_linesman.armor_modifier.attack[2] = 0.
 DamageProfileTemplates.heavy_slashing_axe_linesman.armor_modifier.attack[6] = 0.2
 
 --Halberd
---light 1 (Also affects Glaive lights and bop and Great Axe bop)
-DamageProfileTemplates.medium_slashing_axe_linesman.targets[2].power_distribution.attack = 0.225
-DamageProfileTemplates.medium_slashing_axe_linesman.targets[3].power_distribution.attack = 0.15
-DamageProfileTemplates.medium_slashing_axe_linesman.cleave_distribution.attack = 0.4
-DamageProfileTemplates.medium_slashing_axe_linesman.targets[1].armor_modifier.attack[1] = 1.25
---light 2 (Also affects Billhook light 1, 3)
-Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_stab.damage_profile = "halberd_light_stab"
---Heavy 2 (Also affects Elf Spear heavy 1)
-DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[1].armor_modifier.attack[1] = 1.15
-DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[1].power_distribution.attack = 0.45
-DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[2].power_distribution.attack = 0.35
-DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[3].power_distribution.attack = 0.25
-DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[4].power_distribution.attack = 0.15
-DamageProfileTemplates.heavy_slashing_linesman_polearm.default_target.power_distribution.attack = 0.10
---light 3 and push stab
-DamageProfileTemplates.medium_slashing_smiter_2h.default_target.boost_curve_coefficient_headshot = 2.5
-Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_left.allowed_chain_actions[2].start_time = 0.5
+--light 1
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_left.allowed_chain_actions[2].start_time = 0.5
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_left.damage_profile = "tb_halberd_light_slash"
 NewDamageProfileTemplates.tb_halberd_light_slash = {
@@ -526,6 +513,13 @@ NewDamageProfileTemplates.tb_halberd_light_slash = {
 		}
 	}
 }
+--Heavy 2 (Also affects Elf Spear heavy 1)
+DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[1].armor_modifier.attack[1] = 1.15
+DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[1].power_distribution.attack = 0.45
+DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[2].power_distribution.attack = 0.35
+DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[3].power_distribution.attack = 0.25
+DamageProfileTemplates.heavy_slashing_linesman_polearm.targets[4].power_distribution.attack = 0.15
+DamageProfileTemplates.heavy_slashing_linesman_polearm.default_target.power_distribution.attack = 0.10
 
 --light 2
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_stab.damage_profile = "tb_halberd_light_stab"
@@ -735,7 +729,6 @@ NewDamageProfileTemplates.tb_halberd_heavy_stab = {
 	melee_boost_override = 2.5
 }
 --light 3 and push stab
---DamageProfileTemplates.medium_slashing_smiter_2h.default_target.boost_curve_coefficient_headshot = 2.5
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_down.damage_profile = "tb_halberd_light_chop"
 Weapons.two_handed_halberds_template_1.actions.action_one.light_attack_last.damage_profile = "tb_halberd_light_chop"
 NewDamageProfileTemplates.tb_halberd_light_chop = {
@@ -902,6 +895,8 @@ NewDamageProfileTemplates.medium_blunt_smiter_bop_pick = {
 
 
 --Great Axe
+--lights
+DamageProfileTemplates.medium_slashing_smiter_2h.default_target.boost_curve_coefficient_headshot = 2.5
 --light 3
 Weapons.two_handed_axes_template_1.actions.action_one.light_attack_up.anim_time_scale = 0.9 --0.81
 
@@ -1040,6 +1035,7 @@ Weapons.one_handed_hammer_book_priest_template.actions.action_one.light_attack_0
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.light_attack_02.anim_time_scale = 1.05
 --Heavy
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left.damage_profile = "gs_1h_heavy"
+Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left_charged.damage_profile = "gs_1h_heavy"
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left_charged.range_mod = 1.2 --1
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_left_charged.width_mod = 35 --25
 Weapons.one_handed_hammer_book_priest_template.actions.action_one.heavy_attack_stab_charged.lunge_settings.duration = 0.64
@@ -1175,6 +1171,11 @@ DamageProfileTemplates.medium_burning_tank.targets[1].boost_curve_coefficient_he
 DamageProfileTemplates.medium_burning_tank.targets[1].power_distribution.attack = 0.4
 
 --Glaive
+--lights
+DamageProfileTemplates.medium_slashing_axe_linesman.targets[2].power_distribution.attack = 0.225
+DamageProfileTemplates.medium_slashing_axe_linesman.targets[3].power_distribution.attack = 0.15
+DamageProfileTemplates.medium_slashing_axe_linesman.cleave_distribution.attack = 0.4
+DamageProfileTemplates.medium_slashing_axe_linesman.targets[1].armor_modifier.attack[1] = 1.25
 Weapons.two_handed_axes_template_2.actions.action_one.light_attack_bopp.hit_mass_count = LINESMAN_HIT_MASS_COUNT
 Weapons.two_handed_axes_template_2.actions.action_one.heavy_attack_down_first.hit_mass_count = nil
 DamageProfileTemplates.heavy_slashing_smiter_glaive.default_target.power_distribution.attack = 0.7

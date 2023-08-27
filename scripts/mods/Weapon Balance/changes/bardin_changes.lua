@@ -297,13 +297,13 @@ mod:add_proc_function("add_gromril_delay", function (owner_unit, buff, params)
 end)
 
 mod:add_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_gromril_delay_long", {
-	buff_after_delay = true,
+	buff_to_add = "bardin_ironbreaker_gromril_armour",
 	name = "gromril_delay_long",
 	max_stacks = 1,
 	refresh_durations = true,
+	duration_end_func = "add_buff_local",
 	is_cooldown = true,
 	icon = "bardin_ironbreaker_gromril_armour",
-	delayed_buff_name = "bardin_ironbreaker_gromril_armour",
 	duration = 25
 })
 
@@ -1090,9 +1090,6 @@ mod:modify_talent_buff_template( "dwarf_ranger", "bardin_engineer_pump_buff", {
 	remove_buff_func = "remove_1_stack",
 	display_buff = "bardin_engineer_pump_buff",
 	max_stack_data = {
-		buffs_to_add = {
-			"bardin_engineer_pump_exhaustion_buff"
-		},
 		talent_buffs_to_add = {
 			bardin_engineer_power_on_max_pump = {
 				buff_to_add = "bardin_engineer_power_on_max_pump_buff",
@@ -1101,8 +1098,6 @@ mod:modify_talent_buff_template( "dwarf_ranger", "bardin_engineer_pump_buff", {
 		}
 	}
 })
-
-
 mod:add_buff_function("remove_1_stack", function (unit, buff, params)
 	local buff_template = buff.template
 	local display_buff = buff_template.display_buff
@@ -1411,12 +1406,9 @@ mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_pump_buff", {
 	stat_buff = "cooldown_regen",
 	on_max_stacks_overflow_func = "add_remove_buffs",
 	max_stacks = 5,
-	duration = 12,
+	duration = 10,
 	refresh_durations = true,
 	max_stack_data = {
-		buffs_to_add = {
-			"bardin_engineer_pump_exhaustion_buff"
-		},
 		talent_buffs_to_add = {
 			bardin_engineer_upgraded_grenades = {
 				buff_to_add = "bardin_engineer_power_on_max_pump_buff",

@@ -170,7 +170,7 @@ mod:add_talent_buff_template("witch_hunter", "gs_whc_ammo_on_melee_kills", {
     required_kills = 60,
     display_buff = "gs_display_buff_whc_ammo"
 })
-mod:add_talent_buff_template("empire_soldier", "gs_display_buff_whc_ammo", {
+mod:add_talent_buff_template("witch_hunter", "gs_display_buff_whc_ammo", {
     max_stacks = 100,
 	icon = "victor_witchhunter_max_ammo"
 })
@@ -1107,6 +1107,7 @@ mod:add_text("rebaltourn_career_passive_name_wh_2d", "Blessed Kill")
 mod:add_text("rebaltourn_career_passive_desc_wh_2d_2", "Melee kills reset the cooldown of Blessed Shots.")
 
 mod:modify_talent("wh_bountyhunter", 6, 1, {
+    buffer = "both",
     buffs = {
         "victor_bountyhunter_activated_ability_passive_cooldown_reduction",
         "victor_bountyhunter_heal_on_ult_kill"

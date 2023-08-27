@@ -771,20 +771,99 @@ mod:modify_talent_buff_template("empire_soldier", "markus_knight_damage_taken_al
 
 --lvl 25
 mod:modify_talent("es_knight", 5, 2, {
+	buffer = "both",
     buffs = {
-		"gs_fk_piston",
-		"gs_fk_piston_power"
+		"gs_fk_piston"
 	}
 })
 
-mod:add_text("markus_knight_free_pushes_on_block_desc", "Blocking 5 attacks grants immense Stagger to Kruber's next charged attack.")
+mod:add_text("markus_knight_free_pushes_on_block_desc", "Performing 8 charged attacks grants immense Stagger to Kruber's next charged attack.")
 
 mod:add_talent_buff_template("empire_soldier", "gs_fk_piston", {
-    event = "on_block",
-    buff_func = "gs_block_gives_buff",
-    required_blocks = 10,
-	buff_to_add = "markus_knight_piston_powered_ready"
+    event = "on_hit",
+    buff_func = "heavies_give_buff",
+	buff_to_add = "gs_fk_piston_power",
+	required_heavies = 8,
+	display_buff = "gs_display_buff_fk_heavies"
 })
+
+mod:add_talent_buff_template("empire_soldier", "gs_display_buff_fk_heavies", {
+    max_stacks = 100,
+	icon = "markus_knight_free_pushes_on_block"
+})
+
+local buff_params = {}
+mod:add_proc_function("heavies_give_buff", function (owner_unit, buff, params)
+	local attack_type = params[2]
+	local target_number = params[4]
+
+	if target_number > 1 then
+		return
+	end
+
+	if attack_type ~= "heavy_attack" then
+		return
+	end
+
+	local t = Managers.time:time("game")
+	local delay = buff.delay
+
+	if t and delay then
+		if t < delay then
+			return
+		end
+	end
+
+	buff.delay = t + 0.2
+
+	if not buff.counter then
+		buff.counter = 0
+	end
+
+	local counter = buff.counter
+
+	local buff_template = buff.template
+	local required_heavies = buff_template.required_heavies
+
+	if Unit.alive(owner_unit) and counter >= required_heavies then
+		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+
+		buff_extension:add_buff("gs_fk_piston_power", buff_params)
+		counter = 0
+	end
+
+	buff.counter = counter + 1
+
+	local display_buff = buff_template.display_buff
+	local buff_system = Managers.state.entity:system("buff_system")
+	local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+	local num_buff_stacks = buff_extension:num_buff_type(display_buff)
+
+	if not buff.stack_ids then
+		buff.stack_ids = {}
+	end
+
+	local distance = required_heavies - counter
+
+	if num_buff_stacks < distance then
+		local difference = distance - num_buff_stacks
+
+		for i = 1, difference, 1 do
+			local buff_id = buff_system:add_buff(owner_unit, display_buff, owner_unit, true)
+			local stack_ids = buff.stack_ids
+			stack_ids[#stack_ids + 1] = buff_id
+		end
+	elseif distance < num_buff_stacks then
+		local difference = num_buff_stacks - distance
+
+		for i = 1, difference, 1 do
+			local stack_ids = buff.stack_ids
+			local buff_id = table.remove(stack_ids, 1)
+
+			buff_system:remove_server_controlled_buff(owner_unit, buff_id)
+		end
+	end
+end)
 
 mod:add_talent_buff_template("empire_soldier", "gs_fk_piston_power", {
     event = "on_hit",
@@ -846,9 +925,9 @@ mod:add_proc_function("gs_block_gives_buff", function(owner_unit, buff, params)
 		local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
 		local buff_template = buff.template
 		local buff_name = buff_template.buff_to_add
+		local buff_name_check = buff_template.buff_name_check
 
-
-		if buff_extension:has_buff_type(buff_name) then
+		if buff_extension:has_buff_type(buff_name_check) then
 			return
 		end
 
@@ -860,6 +939,7 @@ mod:add_proc_function("gs_block_gives_buff", function(owner_unit, buff, params)
 		local buff_template_name_id = NetworkLookup.buff_templates[buff_name]
 
 		if counter >= required_blocks then
+			counter = 0
 			if is_server() then
 				buff_extension:add_buff(buff_name, {
 					attacker_unit = owner_unit
@@ -868,10 +948,9 @@ mod:add_proc_function("gs_block_gives_buff", function(owner_unit, buff, params)
 			else
 				network_transmit:send_rpc_server("rpc_add_buff", unit_object_id, buff_template_name_id, unit_object_id, 0, true)
 			end
-			buff.counter = buff.counter - required_blocks
 		end
 
-		buff.counter = buff.counter + 1
+		buff.counter = counter + 1
 	end
 end)
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_free_pushes_on_block_buff", {
@@ -1224,7 +1303,6 @@ mod:modify_talent("es_questingknight", 5, 2,{
 mod:modify_talent("es_questingknight", 6, 2, {
     buffs = {
 		"gs_markus_cooldown_reduction",
-		"markus_questing_knight_ability_buff_on_kill"
 	}
 })
 mod:add_talent_buff_template("empire_soldier", "gs_markus_cooldown_reduction", {
@@ -1236,8 +1314,37 @@ mod:modify_talent_buff_template("empire_soldier", "markus_questing_knight_abilit
 })
 mod:add_text("markus_questing_knight_ability_buff_on_kill_desc", "Killing an enemy with Blessed Blade increases movement speed by 35%% for 15 seconds and grants immunity to ranged knockback. Reduces cooldown by 30%%.")
 
+mod:hook_origin(ActionCareerESQuestingKnight, "client_owner_post_update" , function (self, dt, t, world, can_damage, current_time_in_action)
+	ActionCareerESQuestingKnight.super.client_owner_post_update(self, dt, t, world, can_damage, current_time_in_action)
 
-side_quest_challenge_gs = {
+	if not self._hit_fx_triggered and self._started_damage_window then
+		self._hit_fx_triggered = true
+		local first_person_extension = ScriptUnit.extension(self.owner_unit, "first_person_system")
+		local rot = first_person_extension:current_rotation()
+		local direction = Vector3.flat(Quaternion.forward(rot))
+		local network_manager = Managers.state.network
+		local effect_name = "fx/grail_knight_active_ability"
+		local effect_name_id = NetworkLookup.effects[effect_name]
+		local node_id = 0
+		local vfx_settings = self.current_action.vfx_settings
+		local forward_offset = vfx_settings.forward or 0
+		local up_offset = vfx_settings.up or 0
+		local start_position = POSITION_LOOKUP[self.owner_unit] + direction * forward_offset + Vector3.up() * up_offset
+		local rotation_offset = vfx_settings.pitch and Quaternion.multiply(rot, Quaternion(Vector3.right(), vfx_settings.pitch)) or Quaternion.identity()
+
+		network_manager:rpc_play_particle_effect(nil, effect_name_id, NetworkConstants.invalid_game_object_id, node_id, start_position, rotation_offset, false)
+		local talent_extension = self.talent_extension
+
+		if talent_extension:has_talent("markus_questing_knight_ability_buff_on_kill", "empire_soldier", true) then
+			local owner_unit = self.owner_unit
+			local buff_system = Managers.state.entity:system("buff_system")
+
+			buff_system:add_buff(owner_unit, "markus_questing_knight_ability_buff_on_kill_movement_speed", owner_unit, false)
+		end
+	end
+end)
+
+local side_quest_challenge_gs = {
 	reward = "markus_questing_knight_passive_strength_potion",
 	type = "kill_enemies",
 	amount = {
