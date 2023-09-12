@@ -702,20 +702,20 @@ mod:modify_talent_buff_template("empire_soldier", "markus_knight_passive_defence
 })
 mod:add_text("career_passive_desc_es_2a_2", "Aura that reduces damage taken by 10%.")
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_passive", {
-    range = 20
+    range = 15
 })
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_passive_range", {
     buff_to_add = "markus_knight_passive_defence_aura_range",
 	update_func = "activate_buff_on_distance",
 	remove_buff_func = "remove_aura_buff",
-	range = 40
+	range = 30
 })
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_guard_defence", {
 	buff_to_add = "markus_knight_guard_defence_buff",
 	stat_buff = "damage_taken",
 	update_func = "activate_buff_on_closest_distance",
 	remove_buff_func = "remove_aura_buff",
-	range = 20
+	range = 15
 })
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	buff_to_add = "markus_knight_passive_power_increase_buff",
@@ -723,16 +723,107 @@ mod:modify_talent_buff_template("empire_soldier", "markus_knight_guard", {
 	remove_buff_func = "remove_aura_buff",
 	icon = "markus_knight_passive_power_increase",
 	update_func = "activate_buff_on_closest_distance",
-	range = 20
+	range = 15
 })
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_damage_taken_ally_proximity", {
 	buff_to_add = "markus_knight_damage_taken_ally_proximity_buff",
-	range = 20,
+	range = 15,
 	update_func = "activate_party_buff_stacks_on_ally_proximity",
 	chunk_size = 1,
 	max_stacks = 3,
 	remove_buff_func = "remove_party_buff_stacks"
 })
+mod:add_buff_function("activate_party_buff_stacks_on_ally_proximity", function (owner_unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
+	local buff_system = Managers.state.entity:system("buff_system")
+	local template = buff.template
+	local range = template.range
+	local range_squared = range * range
+	local chunk_size = template.chunk_size
+	local buff_to_add = template.buff_to_add
+	local max_stacks = template.max_stacks
+	local side = Managers.state.side.side_by_unit[owner_unit]
+
+	if not side then
+		return
+	end
+
+	local player_and_bot_units = side.PLAYER_AND_BOT_UNITS
+	local own_position = POSITION_LOOKUP[owner_unit]
+	local num_nearby_allies = 0
+	local allies = #player_and_bot_units
+
+	for i = 1, allies do
+		local ally_unit = player_and_bot_units[i]
+
+		if ally_unit ~= owner_unit then
+			local ally_position = POSITION_LOOKUP[ally_unit]
+			local distance_squared = Vector3.distance_squared(own_position, ally_position)
+
+			if distance_squared < range_squared then
+				num_nearby_allies = num_nearby_allies + 1
+			end
+
+			if math.floor(num_nearby_allies / chunk_size) == max_stacks then
+				break
+			end
+		end
+	end
+
+	if not buff.stack_ids then
+		buff.stack_ids = {}
+	end
+
+	for i = 1, allies do
+		local unit = player_and_bot_units[i]
+
+		if ALIVE[unit] then
+			if not buff.stack_ids[unit] then
+				buff.stack_ids[unit] = {}
+			end
+
+			local unit_position = POSITION_LOOKUP[unit]
+			local distance_squared = Vector3.distance_squared(own_position, unit_position)
+			local buff_extension = ScriptUnit.extension(unit, "buff_system")
+
+			if range_squared < distance_squared then
+				local stack_ids = buff.stack_ids[unit]
+
+				for i = 1, #stack_ids do
+					local stack_ids = buff.stack_ids[unit]
+					local buff_id = table.remove(stack_ids)
+
+					buff_system:remove_server_controlled_buff(unit, buff_id)
+				end
+			else
+				local num_chunks = math.floor(num_nearby_allies / chunk_size)
+				local num_buff_stacks = buff_extension:num_buff_type(buff_to_add)
+
+				if num_buff_stacks < num_chunks then
+					local difference = num_chunks - num_buff_stacks
+					local stack_ids = buff.stack_ids[unit]
+
+					for i = 1, difference do
+						local buff_id = buff_system:add_buff(unit, buff_to_add, unit, true)
+						stack_ids[#stack_ids + 1] = buff_id
+					end
+				elseif num_chunks < num_buff_stacks then
+					local difference = num_buff_stacks - num_chunks
+					local stack_ids = buff.stack_ids[unit]
+
+					for i = 1, difference do
+						local buff_id = table.remove(stack_ids)
+
+						buff_system:remove_server_controlled_buff(unit, buff_id)
+					end
+				end
+			end
+		end
+	end
+end)
 
 --lvl 10
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_power_level_on_stagger_elite_buff", {
@@ -794,6 +885,10 @@ mod:add_talent_buff_template("empire_soldier", "gs_display_buff_fk_heavies", {
 
 local buff_params = {}
 mod:add_proc_function("heavies_give_buff", function (owner_unit, buff, params)
+	if not Managers.state.network.is_server then
+		return
+	end
+
 	local attack_type = params[2]
 	local target_number = params[4]
 
@@ -1086,7 +1181,7 @@ mod:add_text("rebaltourn_markus_knight_heavy_buff_desc", "Valiant Charge increas
 --Huntsman
 --Passive Changes
 mod:modify_talent_buff_template("empire_soldier", "markus_huntsman_passive_crit_aura", {
-    range = 20
+    range = 15
 })
 mod:add_talent_buff_template("empire_soldier", "markus_huntsman_reload_passive", {
     stat_buff = "reload_speed",

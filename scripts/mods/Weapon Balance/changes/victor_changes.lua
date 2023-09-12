@@ -1792,11 +1792,12 @@ mod:add_proc_function("tag_on_hit_whc", function (owner_unit, buff, params)
 	local target_unit = params[1]
     local attack_type = params[2]
 
+
 	if Unit.alive(owner_unit) and Unit.alive(target_unit) and attack_type == "ability" then
         local network_manager = Managers.state.network
         local pinger_unit_id = network_manager:unit_game_object_id(owner_unit)
-        local pinged_unit_id = network_manager:unit_game_object_id(target_unit)
-        network_manager.network_transmit:send_rpc_server("rpc_ping_unit", pinger_unit_id, pinged_unit_id, false, PingTypes.PING_ONLY, 1)
+        local pinged_unit_id, is_level_unit = network_manager:game_object_or_level_id(target_unit)
+        network_manager.network_transmit:send_rpc_server("rpc_ping_unit", pinger_unit_id, pinged_unit_id, is_level_unit, false, PingTypes.PING_ONLY, 1)
 	end
 end)
 

@@ -1339,6 +1339,7 @@ mod:add_talent_buff_template("bright_wizard", "sienna_unchained_ult_cooldown_on_
 mod:modify_talent("bw_unchained", 5, 3, {
     description = "sienna_unchained_reduced_damage_taken_after_venting_desc_2",
 	name = "sienna_unchained_reduced_damage_taken_after_venting_2",
+	buffer = "both",
 	num_ranks = 1,
 	icon = "sienna_unchained_reduced_damage_taken_after_venting",
 	description_values = {

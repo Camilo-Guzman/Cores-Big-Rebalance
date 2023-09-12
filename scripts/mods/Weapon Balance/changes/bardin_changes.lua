@@ -1085,7 +1085,7 @@ mod:modify_talent_buff_template( "dwarf_ranger", "bardin_engineer_pump_buff", {
 	stat_buff = "cooldown_regen",
 	on_max_stacks_overflow_func = "add_remove_buffs",
 	max_stacks = 5,
-	duration = 12,
+	duration = 10,
 	refresh_durations = true,
 	remove_buff_func = "remove_1_stack",
 	display_buff = "bardin_engineer_pump_buff",
@@ -1098,6 +1098,7 @@ mod:modify_talent_buff_template( "dwarf_ranger", "bardin_engineer_pump_buff", {
 		}
 	}
 })
+
 mod:add_buff_function("remove_1_stack", function (unit, buff, params)
 	local buff_template = buff.template
 	local display_buff = buff_template.display_buff
@@ -1399,24 +1400,6 @@ Weapons.bardin_engineer_career_skill_weapon_special.actions.action_one.armor_pie
 Weapons.bardin_engineer_career_skill_weapon_special.actions.action_one.armor_pierce_fire.armor_pierce_initial_rounds_per_second = 2
 Weapons.bardin_engineer_career_skill_weapon_special.actions.action_one.armor_pierce_fire.rps_loss_per_second = 1.5
 Weapons.bardin_engineer_career_skill_weapon_special.custom_data.windup_loss_per_second = (5 - 2) / 1.5
-
-mod:modify_talent_buff_template("dwarf_ranger", "bardin_engineer_pump_buff", {
-	icon = "bardin_engineer_passive",
-	on_max_stacks_func = "add_remove_buffs",
-	stat_buff = "cooldown_regen",
-	on_max_stacks_overflow_func = "add_remove_buffs",
-	max_stacks = 5,
-	duration = 10,
-	refresh_durations = true,
-	max_stack_data = {
-		talent_buffs_to_add = {
-			bardin_engineer_upgraded_grenades = {
-				buff_to_add = "bardin_engineer_power_on_max_pump_buff",
-				rpc_sync = true
-			}
-		}
-	}
-})
 
 mod:modify_talent_buff_template("dwarf_ranger","bardin_engineer_increased_ability_bar", {
 	remove_buff_func = nil,
