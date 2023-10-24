@@ -238,7 +238,7 @@ end)
 mod:add_text("career_passive_desc_dr_1b_2", "Reduces damage taken by 30% and removes slow from Drake Fire overcharge.")
 
 mod:modify_talent_buff_template("dwarf_ranger", "bardin_ironbreaker_passive_increased_defence", {
-	perk = buff_perks.overcharge_no_slow
+	perks = { buff_perks.overcharge_no_slow }
 })
 mod:add_talent_buff_template("dwarf_ranger", "gs_ib_decreased_heat_cost", {
 	stat_buff = "reduced_overcharge",
@@ -628,6 +628,15 @@ mod:add_talent_buff_template("dwarf_ranger", "bardin_ranger_activated_ability_st
 	max_stacks = 1,
 	refresh_durations = true,
 	duration = 10
+})
+mod:modify_talent_buff_template("dwarf_ranger", "bardin_ranger_activated_ability_stealth_outside_of_smoke", {
+	max_stacks = 1,
+})
+mod:modify_talent_buff_template("dwarf_ranger", "bardin_ranger_activated_ability", {
+	max_stacks = 1,
+})
+mod:modify_talent_buff_template("dwarf_ranger", "bardin_ranger_activated_ability_buff", {
+	max_stacks = 1,
 })
 
 mod:hook_origin(ActionCareerDRRanger, "_create_smoke_screen", function (self)
@@ -1064,7 +1073,7 @@ mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_double_ability", 
 	icon = "bardin_slayer_activated_ability_leap_damage",
 	remove_buff_func = "sienna_adept_double_trail_talent_start_ability_cooldown_add",
 	max_stacks = 1,
-	perk = buff_perks.free_ability
+	perks = { buff_perks.free_ability }
 })
 mod:add_talent_buff_template("dwarf_ranger", "gs_bardin_slayer_double_ability_remove", {
 	max_stacks = 1,

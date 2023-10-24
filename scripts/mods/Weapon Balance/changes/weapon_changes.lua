@@ -372,7 +372,6 @@ Weapons.two_handed_hammer_priest_template.actions.action_one.light_attack_03.all
 Weapons.two_handed_hammer_priest_template.actions.action_one.push.allowed_chain_actions[7].start_time = 0.5
 
 --Kruber Spear and Shield
-Weapons.es_deus_01_template.actions.action_one.light_attack_left.allowed_chain_actions[4].start_time = 0.4
 
 --Mace and Shield
 Weapons.one_handed_hammer_shield_template_1.actions.action_one.heavy_attack_left.damage_profile = "heavy_slashing_tank"
@@ -2274,8 +2273,9 @@ Weapons.staff_blast_beam_template_1.actions.action_two.charged_beam.damage_windo
 Weapons.staff_blast_beam_template_1.actions.action_one.shoot_charged.damage_profile = "beam_blast"
 NewDamageProfileTemplates.beam_blast = {
 	charge_value = "projectile",
+	dot_balefire_variant = true,
 	no_stagger_damage_reduction_ranged = true,
-	dot_template_name = "burning_1W_dot",
+	dot_template_name = "burning_dot_1tick",
 	critical_strike = {
 		attack_armor_power_modifer = {
 			1,
@@ -3841,14 +3841,13 @@ mod:add_buff_template("aoe_heavy_poison_dot", {
 	start_flow_event = "poisoned",
 	end_flow_event = "poisoned_end",
 	death_flow_event = "poisoned_death",
-	remove_buff_func = "remove_dot_damage",
 	apply_buff_func = "start_dot_damage",
 	update_start_delay = 0.75,
 	time_between_dot_damages = 0.75,
 	damage_profile = "heavy_poison",
 	update_func = "apply_dot_damage",
 	reapply_buff_func = "reapply_dot_damage",
-	perk = buff_perks.poisoned
+	perks = { buff_perks.poisoned }
 })
 DotTypeLookup.aoe_heavy_poison_dot = "poison_dot"
 --Firebomb fix
@@ -3861,14 +3860,13 @@ mod:add_buff_template("burning_dot_fire_grenade", {
 	end_flow_event = "smoke",
 	start_flow_event = "burn",
 	death_flow_event = "burn_death",
-	 update_start_delay = 0.75,
-	remove_buff_func = "remove_dot_damage",
+	update_start_delay = 0.75,
 	apply_buff_func = "start_dot_damage",
 	time_between_dot_damages = 1,
 	damage_type = "burninating",
 	damage_profile = "burning_dot_firegrenade",
 	update_func = "apply_dot_damage",
-	perk = buff_perks.burning
+	perks = { buff_perks.burning }
 })
 
 DamageProfileTemplates.burning_dot_firegrenade.default_target.armor_modifier.attack = { 0.9, 0.15, 2, 1, 0.6, 0.1 }

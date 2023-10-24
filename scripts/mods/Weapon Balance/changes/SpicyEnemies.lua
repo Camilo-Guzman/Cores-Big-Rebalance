@@ -7,6 +7,7 @@ Managers.package:load("resource_packages/mutators/mutator_curse_grey_wings", "gl
 Managers.package:load("resource_packages/mutators/mutator_curse_corrupted_flesh", "global")
 Managers.package:load("resource_packages/mutators/mutator_curse_khorne_champions", "global")
 Managers.package:load("resource_packages/mutators/mutator_curse_blood_storm", "global")
+Managers.package:load("resource_packages/mutators/mutator_curse_blood_storm", "global")
 
 BuffTemplates.mark_of_nurgle.buffs[3].aoe_init_difficulty_damage[5] = { 10, 2, 0 }
 BuffTemplates.mark_of_nurgle.buffs[3].aoe_dot_difficulty_damage[5] = { 20, 0, 0 }
@@ -177,7 +178,7 @@ mod:add_buff_template("tzeentchian_barier_buff", {
     apply_buff_func = "apply_attach_particle",
     particle_fx = "fx/magic_wind_metal_blade_dance_01",
     max_stacks = 1,
-    perk = buff_perks.invulnerable_ranged
+    perks = { buff_perks.invulnerable_ranged }
 })
 mod:add_buff_template("tzeentch_debuff_dutch_aoe", {
     name = "belakor_champions_leader",
@@ -421,5 +422,144 @@ mod:add_buff_template("khorne_prop_dutch", {
         skaven_storm_vermin_champion = 1.9
     }
 })
+mod:add_buff_template("random_lightning", {
+	update_func = "spawn_lightning_in_a_bit",
+    max_stacks = 1,
+    time_between_explosions = 4,
+    decal_scale = 2,
+    number_of_lightning = 3
+})
+
+mod:add_buff_function("spawn_lightning_in_a_bit", function (unit, buff, params, world)
+    local t = params.t
+    local buff_template = buff.template
+    local next_explosion = buff.next_explosion or 0
+    local time_between_explosions = buff_template.time_between_explosions
+    local number_of_lightning = buff_template.number_of_lightning
+
+    if next_explosion < t and Unit.alive(unit) then
+        for i = 1, number_of_lightning, 1 do
+            local UNIT_NAME = "units/decals/decal_vortex_circle_outer"
+            local unit_position = POSITION_LOOKUP[unit]
+            local random_rotation = math.random(1, 720)
+            local unit_rotation = Unit.local_rotation(unit, random_rotation)
+            local forward = Quaternion.forward(unit_rotation)
+            local rotation = Quaternion.identity()
+            local random_distance = (math.random(6, 15) / 3)
+            local position = unit_position + (forward * random_distance)
+            local extension_init_data = {
+                area_damage_system = {
+                    explosion_template_name = "warp_lightning_strike_delayed"
+                }
+            }
+            local side_manager = Managers.state.side
+            local neutral_side = side_manager:get_side_from_name("neutral")
+            local side_id = neutral_side.side_id
+            local audio_system = Managers.state.entity:system("audio_system")
+
+            if next_explosion < t and Unit.alive(unit) then
+                local ai_unit = Managers.state.unit_spawner:spawn_network_unit(UNIT_NAME, "timed_explosion_unit", extension_init_data, position, rotation)
+                local scale = buff.template.decal_scale or 1
+
+                Unit.set_local_scale(ai_unit, 0, Vector3(scale, scale, scale))
 
 
+                side_manager:add_unit_to_side(ai_unit, side_id)
+                audio_system:play_audio_unit_event("Play_winds_heavens_gameplay_spawn", ai_unit)
+            end
+        end
+
+        buff.next_explosion = t + time_between_explosions
+    end
+end)
+
+mod:add_buff_template("anti_burst", {
+	event = "on_damage_taken",
+    max_stacks = 1,
+    activation_health = 0.8,
+    activation_health_2 = 0.6,
+    activation_health_3 = 0.4,
+    activation_health_4 = 0.2,
+    buff_func = "anti_burst_func",
+    buff_to_add = "damage_immune"
+})
+
+mod:add_proc_function("anti_burst_func", function (owner_unit, buff, params)
+    local template = buff.template
+    local buff_to_add = template.buff_to_add
+    local activation_health = template.activation_health
+    local activation_health_2 = template.activation_health_2
+    local activation_health_3 = template.activation_health_3
+    local activation_health_4 = template.activation_health_4
+
+
+    local hp = ScriptUnit.extension(owner_unit, "health_system"):current_health_percent()
+
+    if not buff.procced then
+		buff.procced = false
+	end
+
+    if not buff.procced_2 then
+		buff.procced_2 = false
+	end
+
+    if not buff.procced_3 then
+		buff.procced_3 = false
+	end
+
+    if not buff.procced_4 then
+		buff.procced_4 = false
+	end
+    
+	local procced = buff.procced
+    local procced_2 = buff.procced_2
+    local procced_3 = buff.procced_3
+    local procced_4 = buff.procced_4
+
+
+    if Unit.alive(owner_unit) and hp <= activation_health and not procced then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+        if buff_extension then
+            buff_extension:add_buff(buff_to_add)
+            buff.procced = true
+        end
+    end
+
+    if Unit.alive(owner_unit) and hp <= activation_health_2 and not procced_2 then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+        if buff_extension then
+            buff_extension:add_buff(buff_to_add)
+            buff.procced_2 = true
+        end
+    end
+
+    if Unit.alive(owner_unit) and hp <= activation_health_3 and not procced_3 then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+        if buff_extension then
+            buff_extension:add_buff(buff_to_add)
+            buff.procced_3 = true
+        end
+    end
+
+    if Unit.alive(owner_unit) and hp <= activation_health_4 and not procced_4 then
+        local buff_extension = ScriptUnit.has_extension(owner_unit, "buff_system")
+
+        if buff_extension then
+            buff_extension:add_buff(buff_to_add)
+            buff.procced_4 = true
+        end
+    end
+end)
+
+mod:add_buff_template("damage_immune", {
+	duration = 10,
+    max_stacks = 1,
+    perks = { buff_perks.invulnerable },
+    apply_buff_func = "apply_attach_particle",
+    particle_fx = "fx/magic_wind_metal_blade_dance_01",
+    remove_buff_func = "remove_attach_particle",
+    refresh_durations = true
+})

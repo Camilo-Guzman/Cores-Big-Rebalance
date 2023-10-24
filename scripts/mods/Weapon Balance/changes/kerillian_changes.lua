@@ -150,6 +150,7 @@ mod:add_proc_function("reduce_activated_ability_cooldown", function (owner_unit,
 		end
 	end
 end)
+local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 table.insert(PassiveAbilitySettings.we_1.buffs, "kerillian_waywatcher_passive_increased_zoom")
 table.insert(PassiveAbilitySettings.we_2.buffs, "kerillian_waywatcher_passive_increased_zoom")
@@ -799,7 +800,7 @@ mod:add_buff_template("gs_deus_rally_flag_buff_protection", {
 	name = "deus_rally_flag_health_regen_buff",
 	stat_buff = "protection_aoe",
 	multiplier = -1,
-	perk = "poison_proof"
+	perks = { buff_perks.poison_proof }
 })
 mod:add_buff_template("gs_deus_rally_flag_buff_protection_ranged", {
 	name = "deus_rally_flag_aoe_buff",
@@ -864,7 +865,7 @@ mod:add_buff_template("gs_deus_rally_flag_aoe_buff_grabber_protection", {
 mod:add_buff_template("gs_deus_rally_flag_aoe_buff_grabber_protection_buff", {
 	icon = "kerillian_maidenguard_activated_ability_buff_on_enemy_hit",
 	name = "deus_rally_flag_health_regen_buff",
-	perk = "ledge_self_rescue"
+	perks = { buff_perks.ledge_self_rescue }
 })
 
 local function is_husk(unit)
@@ -1084,7 +1085,7 @@ mod:add_buff_template("gs_deus_rally_flag_buff_protection_dash", {
 	icon = "kerillian_maidenguard_activated_ability_invis_duration",
 	stat_buff = "protection_aoe",
 	multiplier = -1,
-	perk = "poison_proof",
+	perks = { buff_perks.poison_proof },
 	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_buff_protection_ranged_buff_dash", {
@@ -1114,7 +1115,7 @@ mod:add_buff_template("gs_deus_rally_flag_heal_buff_long_dash", {
 })
 mod:add_buff_template("gs_deus_rally_flag_aoe_buff_grabber_protection_buff_dash", {
 	icon = "kerillian_maidenguard_activated_ability_buff_on_enemy_hit",
-	perk = "ledge_self_rescue",
+	perks = { buff_perks.ledge_self_rescue },
 	duration = 10
 })
 mod:add_buff_template("gs_deus_rally_flag_buff_large_dash", {
@@ -1380,7 +1381,7 @@ mod:modify_talent_buff_template("wood_elf", "kerillian_shade_backstabs_replenish
 mod:add_text("kerillian_shade_backstabs_replenishes_ammunition_desc_2", "Backstabs return 5%% of ammunition. 2 second cooldown.")
 mod:modify_talent_buff_template("wood_elf", "kerillian_shade_activated_ability_phasing", {
 	restealth = true,
-	perk = "shade_melee_boost"
+	perks = { buff_perks.shade_melee_boost }
 })
 mod:add_text("kerillian_shade_activated_ability_phasing_desc", "Leaving Infiltrate grants Kerillian 10%% movement speed and 15%% Power with the ability to pass through enemies for 10 seconds.")
 

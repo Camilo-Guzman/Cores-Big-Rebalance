@@ -853,7 +853,7 @@ mod:add_talent_buff_template("bright_wizard", "gs_burning_enemies_on_headshot_bu
     max_stacks = 1,
 	refresh_durations = true,
     buff_func = "dummy_function",
-    perk = buff_perks.sienna_unchained_burn_push
+    perks = { buff_perks.sienna_unchained_burn_push }
 })
 mod:modify_talent("bw_unchained", 2, 1, {
     description = "gs_burning_enemies_on_headshot_desc",
@@ -910,13 +910,12 @@ mod:add_buff_template("long_burn_low_damage", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     death_flow_event = "burn_death",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     time_between_dot_damages = 0.75,
     damage_type = "burninating",
     damage_profile = "dot_low_damage",
     update_func = "apply_dot_damage",
-    perk = buff_perks.burning
+    perks = { buff_perks.burning }
 })
 mod:add_buff_template("long_burn_extra_low_damage", {
     duration = 4,
@@ -924,20 +923,18 @@ mod:add_buff_template("long_burn_extra_low_damage", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     death_flow_event = "burn_death",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     time_between_dot_damages = 0.75,
     damage_type = "burninating",
     damage_profile = "dot_low_low_damage",
     update_func = "apply_dot_damage",
-    perk = buff_perks.burning
+    perks = { buff_perks.burning }
 })
 DotTypeLookup.long_burn_low_damage = "burning_dot"
 DotTypeLookup.long_burn_extra_low_damage = "burning_dot"
 mod:add_buff_template("burning_magma_dot", {
         duration = 3,
         name = "burning_magma_dot",
-        remove_buff_func = "remove_dot_damage",
         end_flow_event = "smoke",
         start_flow_event = "burn",
         reapply_start_flow_event = true,
@@ -950,7 +947,7 @@ mod:add_buff_template("burning_magma_dot", {
         update_func = "apply_dot_damage",
         reapply_buff_func = "reapply_dot_damage",
         max_stacks = 15,
-        perk = buff_perks.burning
+        perks = { buff_perks.burning }
 })
 mod:add_buff_template("sienna_adept_ability_trail", {
     leave_linger_time = 1.5,
@@ -958,7 +955,6 @@ mod:add_buff_template("sienna_adept_ability_trail", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     on_max_stacks_overflow_func = "reapply_buff",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     update_start_delay = 0.25,
     death_flow_event = "burn_death",
@@ -967,7 +963,7 @@ mod:add_buff_template("sienna_adept_ability_trail", {
     damage_profile = "burning_dot",
     update_func = "apply_dot_damage",
     max_stacks = 1,
-    perk = buff_perks.burning
+    perks = { buff_perks.burning }
 })
 
 mod:add_buff_template("burning_1W_dot_unchained_push", {
@@ -976,7 +972,6 @@ mod:add_buff_template("burning_1W_dot_unchained_push", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     death_flow_event = "burn_death",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     time_between_dot_damages = 0.75,
 	update_start_delay = 0.25,
@@ -984,7 +979,7 @@ mod:add_buff_template("burning_1W_dot_unchained_push", {
     damage_profile = "burning_dot",
     update_func = "apply_dot_damage",
 	max_stacks = 2,
-    perk = buff_perks.burning
+    perks = { buff_perks.burning }
 })
 mod:add_buff_template("burning_1W_dot_unchained_team_burn", {
     duration = 5,
@@ -992,7 +987,6 @@ mod:add_buff_template("burning_1W_dot_unchained_team_burn", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     death_flow_event = "burn_death",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     time_between_dot_damages = 1,
 	update_start_delay = 0.5,
@@ -1000,7 +994,7 @@ mod:add_buff_template("burning_1W_dot_unchained_team_burn", {
     damage_profile = "dot_low_damage",
     update_func = "apply_dot_damage",
 	max_stacks = 3,
-    perk = buff_perks.burning
+    perks = { buff_perks.burning }
 })
 DotTypeLookup.burning_1W_dot_unchained_team_burn = "burning_dot"
 mod:add_buff_template("zealot_burning_debuff", {
@@ -1009,7 +1003,6 @@ mod:add_buff_template("zealot_burning_debuff", {
     end_flow_event = "smoke",
     start_flow_event = "burn",
     death_flow_event = "burn_death",
-    remove_buff_func = "remove_dot_damage",
     apply_buff_func = "start_dot_damage",
     time_between_dot_damages = 1,
 	update_start_delay = 0.5,
@@ -1017,7 +1010,7 @@ mod:add_buff_template("zealot_burning_debuff", {
     damage_profile = "dot_low_damage",
     update_func = "apply_dot_damage",
 	max_stacks = 1,
-    perk = buff_perks.burning,
+    perks = { buff_perks.burning },
 	stat_buff = "damage_taken",
 	multiplier = 0.1,
 	max_stacks = 3,
@@ -1038,7 +1031,7 @@ mod:add_buff_template("warrior_priest_fury_burn", {
 	hit_zone = "neck",
 	damage_profile = "thorn_sister_poison",
 	update_func = "apply_dot_damage",
-	perk = buff_perks.burning
+	perks = { buff_perks.burning }
 })
 DotTypeLookup.warrior_priest_fury_burn = "burning_dot"
 

@@ -257,7 +257,7 @@ mod:modify_talent("es_mercenary", 4, 1, {
 --lvl 25
 --Dodge Talent
 mod:modify_talent_buff_template("empire_soldier", "markus_mercenary_dodge_range", {
-	perk = buff_perks.infinite_dodge
+	perks = { buff_perks.infinite_dodge }
 })
 
 mod:add_text("markus_mercenary_dodge_range_desc", "Increases dodge range by 20.0%% and grants infinite dodge count.")
@@ -740,7 +740,7 @@ mod:add_buff_function("activate_party_buff_stacks_on_ally_proximity", function (
 
 	local buff_system = Managers.state.entity:system("buff_system")
 	local template = buff.template
-	local range = template.range
+	local range = 15
 	local range_squared = range * range
 	local chunk_size = template.chunk_size
 	local buff_to_add = template.buff_to_add
@@ -1161,7 +1161,7 @@ mod:add_text("markus_knight_cooldown_on_stagger_elite_desc", "Staggering an elit
 mod:add_text("markus_knight_ability_invulnerability_desc", "Valiant Charge grants invulnerability and disabler immunity for 4 seconds.")
 mod:modify_talent_buff_template("empire_soldier", "markus_knight_ability_invulnerability_buff", {
 	duration = 4,
-	perk = buff_perks.ledge_self_rescue
+	perks = { buff_perks.ledge_self_rescue }
 })
 
 mod:add_talent_buff_template("empire_soldier", "markus_knight_heavy_buff", {
@@ -1405,7 +1405,7 @@ mod:add_talent_buff_template("empire_soldier", "gs_markus_cooldown_reduction", {
 	multiplier = -0.3
 })
 mod:modify_talent_buff_template("empire_soldier", "markus_questing_knight_ability_buff_on_kill_movement_speed", {
-	perk = buff_perks.no_ranged_knockback
+	perks = { buff_perks.no_ranged_knockback }
 })
 mod:add_text("markus_questing_knight_ability_buff_on_kill_desc", "Killing an enemy with Blessed Blade increases movement speed by 35%% for 15 seconds and grants immunity to ranged knockback. Reduces cooldown by 30%%.")
 

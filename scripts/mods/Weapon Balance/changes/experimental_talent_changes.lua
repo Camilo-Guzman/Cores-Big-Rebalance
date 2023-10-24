@@ -28,6 +28,8 @@ Managers.package:load("resource_packages/dlcs/mutators_batch_04", "global")
 Managers.package:load("resource_packages/careers/wh_priest", "global")
 Managers.package:load("resource_packages/careers/bw_unchained", "global")
 Managers.package:load("resource_packages/dlcs/wizards_part_2", "global")
+Managers.package:load("resource_packages/levels/honduras/skittergate_common", "global")
+Managers.package:load("resource_packages/levels/honduras/skittergate", "global")
 
 NewSpawnUnitTemplates = NewSpawnUnitTemplates or {}
 
@@ -458,86 +460,98 @@ mod:hook_origin(DamageUtils, "apply_buffs_to_damage", function(current_damage, a
 		end
 	end
 
-	if ScriptUnit.has_extension(attacker_unit, "buff_system") and attacker_player then
-		local buff_extension = ScriptUnit.extension(attacker_unit, "buff_system")
+	local buff_extension = ScriptUnit.has_extension(attacker_unit, "buff_system")
+	if buff_extension then
 		local item_data = rawget(ItemMasterList, damage_source)
 		local weapon_template_name = item_data and item_data.template
 		local attacked_buff_extension = ScriptUnit.has_extension(attacked_unit, "buff_system")
 
-		if weapon_template_name then
-			local weapon_template = Weapons[weapon_template_name]
-			local buff_type = weapon_template.buff_type
+		if attacker_player then
 
-			if buff_type then
-				damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage")
+			if weapon_template_name then
+				local weapon_template = Weapons[weapon_template_name]
+				local buff_type = weapon_template.buff_type
 
-				if buff_extension:has_buff_perk("missing_health_damage") then
+				if buff_type then
+					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage")
+
+					if buff_extension:has_buff_perk("missing_health_damage") then
+						local attacked_health_extension = ScriptUnit.extension(attacked_unit, "health_system")
+						local missing_health_percentage = 1 - attacked_health_extension:current_health_percent()
+						local damage_mult = 1 + missing_health_percentage / 2
+						damage = damage * damage_mult
+					end
+				end
+
+				local is_melee = MeleeBuffTypes[buff_type]
+				local is_ranged = RangedBuffTypes[buff_type]
+
+				if is_melee then
+					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee")
+
+					if buff_type == "MELEE_1H" then
+						damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee_1h")
+					elseif buff_type == "MELEE_2H" then
+						damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee_2h")
+					end
+
+					if buff_attack_type == "heavy_attack" then
+						damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_heavy_attack")
+					end
+
+					if first_hit then
+						damage = buff_extension:apply_buffs_to_value(damage, "first_melee_hit_damage")
+					end
+				elseif is_ranged then
+					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_ranged")
 					local attacked_health_extension = ScriptUnit.extension(attacked_unit, "health_system")
-					local missing_health_percentage = 1 - attacked_health_extension:current_health_percent()
-					local damage_mult = 1 + missing_health_percentage / 2
-					damage = damage * damage_mult
+
+					if attacked_health_extension:current_health_percent() <= 0.9 or attacked_health_extension:current_max_health_percent() <= 0.9 then
+						damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_ranged_to_wounded")
+					end
+
+					if first_hit then
+						damage = buff_extension:apply_buffs_to_value(damage, "first_ranged_hit_damage")
+					end
+				end
+
+				local weapon_type = weapon_template.weapon_type
+
+				if weapon_type then
+					local stat_buff = WeaponSpecificStatBuffs[weapon_type].damage
+					damage = buff_extension:apply_buffs_to_value(damage, stat_buff)
+				end
+
+				if is_melee or is_ranged then
+					damage = buff_extension:apply_buffs_to_value(damage, "reduced_non_burn_damage")
 				end
 			end
 
-			local is_melee = MeleeBuffTypes[buff_type]
-			local is_ranged = RangedBuffTypes[buff_type]
+			if attacked_buff_extension then
+				local has_poison_or_bleed = attacked_buff_extension:has_buff_perk("poisoned") or attacked_buff_extension:has_buff_perk("bleeding")
+				local has_burn = attacked_buff_extension:has_buff_perk("burning")
 
-			if is_melee then
-				damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee")
-
-				if buff_type == "MELEE_1H" then
-					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee_1h")
-				elseif buff_type == "MELEE_2H" then
-					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_melee_2h")
+				if has_poison_or_bleed then
+					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_poisoned_or_bleeding")
 				end
-
-				if buff_attack_type == "heavy_attack" then
-					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_heavy_attack")
-				end
-
-				if first_hit then
-					damage = buff_extension:apply_buffs_to_value(damage, "first_melee_hit_damage")
-				end
-			elseif is_ranged then
-				damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_ranged")
-				local attacked_health_extension = ScriptUnit.extension(attacked_unit, "health_system")
-
-				if attacked_health_extension:current_health_percent() <= 0.9 or attacked_health_extension:current_max_health_percent() <= 0.9 then
-					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_ranged_to_wounded")
-				end
-
-				if first_hit then
-					damage = buff_extension:apply_buffs_to_value(damage, "first_ranged_hit_damage")
+				if has_burn then
+					damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_burning")
 				end
 			end
 
-			local weapon_type = weapon_template.weapon_type
-
-			if weapon_type then
-				local stat_buff = WeaponSpecificStatBuffs[weapon_type].damage
-				damage = buff_extension:apply_buffs_to_value(damage, stat_buff)
-			end
-
-			if is_melee or is_ranged then
-				damage = buff_extension:apply_buffs_to_value(damage, "reduced_non_burn_damage")
+			if damage_type == "burninating" then
+				damage = buff_extension:apply_buffs_to_value(damage, "increased_burn_dot_damage")
 			end
 		end
 
-		if attacked_buff_extension then
-			local has_poison_or_bleed = attacked_buff_extension:has_buff_perk("poisoned") or attacked_buff_extension:has_buff_perk("bleeding")
-			local has_burn = attacked_buff_extension:has_buff_perk("burning")
+		damage = buff_extension:apply_buffs_to_value(damage, "damage_dealt")
 
-			if has_poison_or_bleed then
-				damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_poisoned_or_bleeding")
-			end
-			if has_burn then
-				damage = buff_extension:apply_buffs_to_value(damage, "increased_weapon_damage_burning")
-			end
+
+		local has_balefire, applied_this_frame = Managers.state.status_effect:has_status(attacked_unit, StatusEffectNames.burning_balefire)
+		if has_balefire and not applied_this_frame then
+			damage = buff_extension:apply_buffs_to_value(damage, "increased_damage_to_balefire")
 		end
 
-		if damage_type == "burninating" then
-			damage = buff_extension:apply_buffs_to_value(damage, "increased_burn_damage")
-		end
 	end
 
 	local attacker_buff_extension = ScriptUnit.has_extension(attacker_unit, "buff_system")
@@ -717,6 +731,28 @@ NewExplosionTemplates.witch_hunter_tag_explosion.explosion = {
 	no_friendly_fire = true,
 }
 
+NewExplosionTemplates.warp_lightning_strike_delayed = {}
+NewExplosionTemplates.warp_lightning_strike_delayed = {
+	time_to_explode = 2,
+	follow_time = 3,
+	explosion = {
+		always_hurt_players = true,
+		radius = 2,
+		alert_enemies = false,
+		sound_event_name = "fireball_big_hit",
+		max_damage_radius_min = 0.5,
+		attack_template = "chaos_magic_missile",
+		max_damage_radius_max = 1,
+		damage_type = "grenade",
+		damage_interval = 0,
+		power_level = 1000,
+		effect_name = "fx/warp_lightning_bolt_impact",
+		immune_breeds = {
+			all = true
+		}
+	}
+}
+
 
 for name, templates in pairs(NewExplosionTemplates) do
 	templates.name = name
@@ -833,7 +869,7 @@ end)
 mod:add_talent_buff_template("wood_elf", "gs_wall_ult_toggle", {
 	icon = "kerillian_thornsister_activated_ability",
 	max_stacks = 1,
-	perk = "wall_swap",
+	perks = "wall_swap",
 	debuff = true
 })
 table.insert(require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names"), "wall_swap")

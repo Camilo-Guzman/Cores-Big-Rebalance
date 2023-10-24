@@ -109,6 +109,7 @@ function mod.add_buff(self, owner_unit, buff_name)
         end
     end
 end
+local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 --WHC
 ExplosionTemplates.victor_captain_activated_ability_stagger.explosion = {
@@ -205,7 +206,7 @@ mod:add_text("career_passive_name_wh_1d", "Hard to kill.")
 mod:add_text("career_passive_desc_wh_1d", "Healing received increased by 50% when below 25% health. Does not get wounded after going down.")
 
 mod:add_talent_buff_template("witch_hunter", "gs_infinite_wounds", {
-    perk = "infinite_wounds"
+    perks = { buff_perks.infinite_wounds }
 })
 
 mod:add_talent_buff_template("witch_hunter", "gs_deus_reckless_swings", {
@@ -295,6 +296,32 @@ mod:add_proc_function("gs_zealot_damage", function(owner_unit, buff, params, wor
 
     if target_num <= 5 and attack_type then
         DamageUtils.add_damage_network(owner_unit, owner_unit, damage_to_deal, "torso", "life_drain", nil, Vector3(0, 0, 0), "life_drain", nil, owner_unit)
+    end
+end)
+
+mod:add_proc_function("victor_zealot_gain_invulnerability", function(owner_unit, buff, params)
+    local status_extension = ScriptUnit.extension(owner_unit, "status_system")
+
+    if ALIVE[owner_unit] and not status_extension:is_knocked_down() then
+        local health_extension = ScriptUnit.extension(owner_unit, "health_system")
+        local buff_extension = ScriptUnit.extension(owner_unit, "buff_system")
+        local already_unkillable = buff_extension:has_buff_perk("invulnerable") or buff_extension:has_buff_perk("ignore_death")
+
+        if already_unkillable then
+            return false
+        end
+
+        local damage = params[2]
+        local current_health = health_extension:current_health()
+        local killing_blow = current_health <= damage
+        local template = buff.template
+        local buff_to_add = template.buff_to_add
+
+        if killing_blow or current_health <= 1 then
+            buff_extension:add_buff(buff_to_add)
+
+            return true
+        end
     end
 end)
 
@@ -1218,7 +1245,6 @@ BuffTemplates.victor_priest_passive_aftershock.buffs[1].stat_buff = "hit_force"
 BuffTemplates.victor_priest_passive_aftershock.buffs[1].multiplier = 10
 
 local stagger_types = require("scripts/utils/stagger_types")
-local buff_perks = require("scripts/unit_extensions/default_player_unit/buffs/settings/buff_perk_names")
 
 mod:add_buff_template("victor_priest_activated_noclip", {
     stagger_distance = 1,
@@ -1233,7 +1259,7 @@ mod:add_buff_template("victor_priest_activated_noclip", {
     max_stacks = 1,
     update_func = "victor_priest_activated_noclip_update",
     update_frequency = 0.1,
-    perk = buff_perks.no_ranged_knockback,
+    perks= { buff_perks.no_ranged_knockback },
     stagger_impact = {
         stagger_types.medium,
         stagger_types.none,
